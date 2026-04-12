@@ -50,7 +50,7 @@ export default function SitesPage() {
   }
 
   return (
-    <PageTransition>
+    <PageTransition className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 pt-8">
       {/* 页面标题 */}
       <FadeIn className="mb-8">
         <div className="flex items-center justify-between">

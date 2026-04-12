@@ -155,7 +155,7 @@ export default function NoteDetailPage() {
   }
 
   return (
-    <PageTransition>
+    <PageTransition className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 pt-8">
       {/* 阅读进度条 */}
       <div className="fixed top-16 left-0 right-0 h-1 z-50 bg-background-secondary">
         <motion.div

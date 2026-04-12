@@ -117,7 +117,7 @@ function NotesPageContent() {
   }
 
   return (
-    <PageTransition>
+    <PageTransition className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 pt-8">
       {/* 页面标题 */}
       <FadeIn className="mb-8">
         <h1 className="text-3xl font-bold mb-2">笔记列表</h1>

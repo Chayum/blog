@@ -20,16 +20,28 @@ export default function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const { theme, setTheme } = useSettingsStore()
+  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme, _hasHydrated } = useSettingsStore()
+
+  // 确保客户端渲染完成
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // 判断是否在首页
+  const isHome = pathname === '/'
 
   // 滚动监听
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50)
+      // 首页时，滚动超过100vh的80%显示背景，其他页面滚动50px显示
+      const threshold = isHome ? window.innerHeight * 0.8 : 50
+      setScrolled(window.scrollY > threshold)
     }
     window.addEventListener('scroll', handleScroll)
+    handleScroll() // 初始检查
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, [isHome])
 
   // 关闭移动端菜单
   useEffect(() => {
@@ -46,13 +58,25 @@ export default function Navbar() {
   }
   const ThemeIcon = getThemeIcon()
 
+  // 如果还没挂载，返回简化版导航避免闪烁
+  if (!mounted) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16" />
+        </nav>
+      </header>
+    )
+  }
+
   return (
     <>
       <header
         className={clsx(
-          'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-          scrolled
-            ? 'glass border-b border-border shadow-sm'
+          'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
+          // 首页未滚动时透明，其他页面或滚动后显示背景
+          scrolled || !isHome
+            ? 'glass border-b border-border/50 shadow-sm backdrop-blur-xl bg-background/80'
             : 'bg-transparent'
         )}
       >
@@ -62,11 +86,23 @@ export default function Navbar() {
             <Link href="/" className="flex items-center gap-2">
               <motion.div
                 whileHover={{ rotate: 10 }}
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm"
+                className={clsx(
+                  'w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm transition-colors',
+                  scrolled || !isHome
+                    ? 'bg-gradient-to-br from-accent to-purple-500 text-white'
+                    : 'bg-white/20 text-white backdrop-blur-sm'
+                )}
               >
                 B
               </motion.div>
-              <span className="font-bold text-lg hidden sm:block">BlogPro</span>
+              <span 
+                className={clsx(
+                  'font-bold text-lg hidden sm:block transition-colors',
+                  scrolled || !isHome ? 'text-foreground' : 'text-white'
+                )}
+              >
+                BlogPro
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -81,10 +117,12 @@ export default function Navbar() {
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.95 }}
                       className={clsx(
-                        'px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors',
+                        'px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all',
                         isActive
                           ? 'bg-accent/10 text-accent'
-                          : 'text-foreground-secondary hover:text-foreground hover:bg-background-secondary'
+                          : scrolled || !isHome
+                            ? 'text-foreground-secondary hover:text-foreground hover:bg-background-secondary'
+                            : 'text-white/80 hover:text-white hover:bg-white/10'
                       )}
                     >
                       <Icon size={16} />
@@ -106,17 +144,27 @@ export default function Navbar() {
                   const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
                   setTheme(nextTheme)
                 }}
-                className="p-2 rounded-lg hover:bg-background-secondary transition-colors"
+                className={clsx(
+                  'p-2 rounded-lg transition-colors',
+                  scrolled || !isHome
+                    ? 'hover:bg-background-secondary text-foreground-secondary'
+                    : 'hover:bg-white/10 text-white/80'
+                )}
                 title={`当前: ${theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'}`}
               >
-                <ThemeIcon size={20} className="text-foreground-secondary" />
+                <ThemeIcon size={20} />
               </motion.button>
 
               {/* Mobile Menu Button */}
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-background-secondary"
+                className={clsx(
+                  'md:hidden p-2 rounded-lg transition-colors',
+                  scrolled || !isHome
+                    ? 'hover:bg-background-secondary'
+                    : 'hover:bg-white/10 text-white'
+                )}
               >
                 {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </motion.button>
@@ -133,7 +181,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-x-0 top-16 z-40 glass border-b border-border"
+            className="fixed inset-x-0 top-16 z-40 glass border-b border-border bg-background/95 backdrop-blur-xl"
           >
             <div className="max-w-6xl mx-auto px-4 py-4 space-y-1">
               {navItems.map((item) => {
@@ -162,8 +210,8 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* Spacer */}
-      <div className="h-16" />
+      {/* Spacer - 只在非首页显示，因为首页有全屏hero */}
+      {!isHome && <div className="h-16" />}
     </>
   )
 }

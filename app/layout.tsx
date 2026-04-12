@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="min-h-screen bg-background">
         <Navbar />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8">
+        <main className="relative">
           {children}
         </main>
         <MobileNav />

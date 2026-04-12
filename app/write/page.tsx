@@ -114,7 +114,7 @@ function WritePageContent() {
   }, [addNote, router, toast])
 
   return (
-    <PageTransition>
+    <PageTransition className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 pt-8">
       <FadeIn className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link
