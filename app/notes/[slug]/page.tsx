@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import { ArrowLeft, Edit, Calendar, Clock, Share2, Check, Download, Trash2 } from 'lucide-react'
+import { ArrowLeft, Edit, Calendar, Clock, Share2, Check, Download, Trash2, ArrowUp } from 'lucide-react'
 import { useNotesStore } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
@@ -54,6 +54,7 @@ export default function NoteDetailPage() {
   const [readProgress, setReadProgress] = useState(0)
   const [activeHeading, setActiveHeading] = useState<string>('')
   const [deleteModal, setDeleteModal] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
   
   // 目录容器和目录项的 ref
   const tocContainerRef = useRef<HTMLDivElement>(null)
@@ -78,7 +79,10 @@ export default function NoteDetailPage() {
     return items
   }, [note])
 
-  // 滚动进度和高亮目录
+  // 计算字数
+  const wordCount = note ? note.content.replace(/\s/g, '').length : 0
+
+  // 滚动进度、高亮目录、回到顶部按钮
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY
@@ -86,11 +90,13 @@ export default function NoteDetailPage() {
       const progress = Math.min(100, Math.round((scrollTop / docHeight) * 100))
       setReadProgress(progress)
 
+      // 显示/隐藏回到顶部按钮
+      setShowBackToTop(scrollTop > 300)
+
       // 基于滚动位置计算当前高亮标题
-      const scrollPosition = window.scrollY + 150 // 偏移量，考虑导航栏高度
+      const scrollPosition = window.scrollY + 150
       let currentHeading = ''
 
-      // 遍历所有标题，找到最接近视口顶部的标题
       for (const item of toc) {
         const element = document.getElementById(item.id)
         if (element) {
@@ -98,7 +104,7 @@ export default function NoteDetailPage() {
           if (offsetTop <= scrollPosition) {
             currentHeading = item.id
           } else {
-            break // 一旦超过当前滚动位置就停止
+            break
           }
         }
       }
@@ -106,7 +112,6 @@ export default function NoteDetailPage() {
       setActiveHeading(currentHeading)
     }
 
-    // 初始化时执行一次
     handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
 
@@ -127,7 +132,6 @@ export default function NoteDetailPage() {
     const elementTop = activeElement.offsetTop
     const elementHeight = activeElement.clientHeight
     
-    // 计算滚动位置，使元素居中显示
     const scrollTop = elementTop - containerHeight / 2 + elementHeight / 2
     
     container.scrollTo({
@@ -263,6 +267,7 @@ export default function NoteDetailPage() {
         </div>
       </FadeIn>
 
+      {/* 主布局 */}
       <div className="flex gap-8">
         {/* 主内容 */}
         <FadeIn delay={0.1} className="flex-1 min-w-0">
@@ -292,7 +297,7 @@ export default function NoteDetailPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <Clock size={14} />
-                {note.readingTime} 分钟阅读
+                共 {wordCount} 字
               </div>
             </div>
           </header>
@@ -358,7 +363,7 @@ export default function NoteDetailPage() {
           <footer className="mt-16 pt-8 border-t border-border">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground-secondary">
-                最后更新于 {formatDate(note.updatedAt)}
+                共计 {wordCount} 字 · 最后更新于 {formatDate(note.updatedAt)}
               </span>
               <div className="flex items-center gap-2">
                 <Link href="/notes" className="btn btn-ghost text-sm">
@@ -395,13 +400,12 @@ export default function NoteDetailPage() {
                         e.preventDefault()
                         const element = document.getElementById(item.id)
                         if (element) {
-                          const offset = 100 // 留出导航栏空间
+                          const offset = 100
                           const elementPosition = element.getBoundingClientRect().top + window.scrollY
                           window.scrollTo({
                             top: elementPosition - offset,
                             behavior: 'smooth'
                           })
-                          // 更新 URL hash 但不跳转
                           window.history.pushState(null, '', `#${item.id}`)
                         }
                       }}
@@ -425,6 +429,23 @@ export default function NoteDetailPage() {
 
       {/* 底部留白 */}
       <div className="h-16" />
+
+      {/* 回到顶部按钮 */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-8 right-8 z-40 w-12 h-12 rounded-full bg-accent text-white shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors"
+          >
+            <ArrowUp size={20} />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* 删除确认弹窗 */}
       <ConfirmModal

@@ -36,13 +36,9 @@
 }
 
 @layer base {
-  html, body {
+  body {
     @apply bg-background text-foreground font-sans antialiased;
     transition: background-color 0.3s ease, color 0.3s ease;
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    overflow-x: hidden;
   }
 }
 

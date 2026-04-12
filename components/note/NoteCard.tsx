@@ -117,7 +117,7 @@ export default function NoteCard({
         <div className="flex items-center gap-3 text-xs text-foreground-secondary">
           <span>{formatDate(note.updatedAt)}</span>
           <span>·</span>
-          <span>{note.readingTime} 分钟阅读</span>
+          <span>共 {note.content.replace(/\s/g, '').length} 字</span>
         </div>
 
         {/* 操作按钮 */}
