@@ -6,6 +6,7 @@ import { Search, Plus, FolderOpen } from 'lucide-react'
 import { useSitesStore } from '@/store/sitesStore'
 import PageTransition, { FadeIn, StaggerContainer, StaggerItem } from '@/components/layout/PageTransition'
 import SiteGroupCard from '@/components/site/SiteGroupCard'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { Site } from '@/store/sitesStore'
 
 export default function SitesPage() {
@@ -14,12 +15,22 @@ export default function SitesPage() {
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupIcon, setNewGroupIcon] = useState('📁')
   
+  // 编辑网站状态
+  const [editingSite, setEditingSite] = useState<Site | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editUrl, setEditUrl] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  
+  // 删除网站状态
+  const [deletingSiteId, setDeletingSiteId] = useState<string | null>(null)
+  
   // 检测 Zustand hydration 是否完成
   const hasHydrated = useSitesStore((state) => state._hasHydrated)
   // 响应式订阅
   const groups = useSitesStore((state) => state.groups)
   const sites = useSitesStore((state) => state.sites)
   const addGroup = useSitesStore((state) => state.addGroup)
+  const updateSite = useSitesStore((state) => state.updateSite)
   const deleteSite = useSitesStore((state) => state.deleteSite)
 
   // 添加分组
@@ -29,6 +40,39 @@ export default function SitesPage() {
     setNewGroupName('')
     setNewGroupIcon('📁')
     setShowAddGroup(false)
+  }
+  
+  // 打开编辑弹窗
+  const handleEditSite = (site: Site) => {
+    setEditingSite(site)
+    setEditName(site.name)
+    setEditUrl(site.url)
+    setEditDescription(site.description)
+  }
+  
+  // 保存编辑
+  const handleSaveEdit = () => {
+    if (!editingSite || !editName.trim() || !editUrl.trim()) return
+    
+    const domain = editUrl.startsWith('http') ? editUrl : `https://${editUrl}`
+    const favicon = `https://www.google.com/s2/favicons?domain=${new URL(domain).hostname}&sz=64`
+    
+    updateSite(editingSite.id, {
+      name: editName.trim(),
+      url: domain,
+      description: editDescription.trim(),
+      favicon
+    })
+    
+    setEditingSite(null)
+  }
+  
+  // 确认删除
+  const handleConfirmDelete = () => {
+    if (deletingSiteId) {
+      deleteSite(deletingSiteId)
+      setDeletingSiteId(null)
+    }
   }
 
   // 预设图标
@@ -97,10 +141,8 @@ export default function SitesPage() {
                   group={group}
                   sites={sites}
                   searchQuery={searchQuery}
-                  onEditSite={(site) => {
-                    console.log('Edit site:', site)
-                  }}
-                  onDeleteSite={deleteSite}
+                  onEditSite={handleEditSite}
+                  onDeleteSite={setDeletingSiteId}
                 />
               </StaggerItem>
             ))}
@@ -196,6 +238,88 @@ export default function SitesPage() {
 
       {/* 底部留白 */}
       <div className="h-16" />
+      
+      {/* 编辑网站弹窗 */}
+      {editingSite && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setEditingSite(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-card rounded-xl border border-border p-6 w-full max-w-md"
+          >
+            <h3 className="text-lg font-semibold mb-4">编辑网站</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">名称</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="GitHub"
+                  className="input"
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1.5">网址</label>
+                <input
+                  type="text"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="https://github.com"
+                  className="input"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1.5">描述</label>
+                <input
+                  type="text"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="代码托管平台"
+                  className="input"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setEditingSite(null)} className="btn btn-secondary">
+                取消
+              </button>
+              <button 
+                onClick={handleSaveEdit} 
+                className="btn btn-primary"
+                disabled={!editName.trim() || !editUrl.trim()}
+              >
+                保存
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      
+      {/* 删除确认弹窗 */}
+      <ConfirmModal
+        isOpen={!!deletingSiteId}
+        title="删除网站"
+        message="确定要删除这个网站吗？此操作不可恢复。"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingSiteId(null)}
+        type="danger"
+        confirmText="删除"
+        cancelText="取消"
+      />
     </PageTransition>
   )
 }
