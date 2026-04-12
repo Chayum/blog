@@ -11,12 +11,26 @@ export const DEFAULT_TYPEWRITER_TEXTS = [
   'CYBER_BLOG // 赛博博客'
 ]
 
+// 趣味组件类型
+export type WidgetType = 'pet' | 'particles' | 'game' | 'terminal' | 'none'
+
+export interface WidgetConfig {
+  type: WidgetType
+  position: { x: number; y: number }
+  isOpen: boolean
+  isExpanded: boolean
+}
+
 interface SettingsState {
   theme: Theme
   sidebarOpen: boolean
   heroBackground: string | null  // base64 图片或渐变预设
   typewriterTexts: string[]      // 打字机文字列表
   _hasHydrated: boolean          // hydration 状态
+  leftWidget: WidgetConfig       // 左侧趣味组件
+  rightWidget: WidgetConfig      // 右侧趣味组件
+  heroSubtitle: string           // 英雄页副标题
+  siteName: string               // 博客名称
   setHasHydrated: (state: boolean) => void
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
@@ -25,6 +39,26 @@ interface SettingsState {
   setHeroBackground: (background: string | null) => void
   setTypewriterTexts: (texts: string[]) => void
   resetTypewriterTexts: () => void
+  setLeftWidget: (widget: Partial<WidgetConfig>) => void
+  setRightWidget: (widget: Partial<WidgetConfig>) => void
+  resetWidgetPositions: () => void
+  setHeroSubtitle: (text: string) => void
+  setSiteName: (name: string) => void
+}
+
+// 默认组件配置
+const DEFAULT_LEFT_WIDGET: WidgetConfig = {
+  type: 'pet',
+  position: { x: 20, y: 100 },
+  isOpen: true,
+  isExpanded: true
+}
+
+const DEFAULT_RIGHT_WIDGET: WidgetConfig = {
+  type: 'none',
+  position: { x: 20, y: 100 },
+  isOpen: false,
+  isExpanded: true
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -35,6 +69,10 @@ export const useSettingsStore = create<SettingsState>()(
       heroBackground: null,
       typewriterTexts: DEFAULT_TYPEWRITER_TEXTS,
       _hasHydrated: false,
+      leftWidget: DEFAULT_LEFT_WIDGET,
+      rightWidget: DEFAULT_RIGHT_WIDGET,
+      heroSubtitle: '记录思考 · 分享知识 · 探索无限可能',
+      siteName: 'BlogPro',
 
       setHasHydrated: (state) => {
         set({ _hasHydrated: state })
@@ -80,6 +118,33 @@ export const useSettingsStore = create<SettingsState>()(
 
       resetTypewriterTexts: () => {
         set({ typewriterTexts: DEFAULT_TYPEWRITER_TEXTS })
+      },
+
+      setLeftWidget: (widget) => {
+        set((state) => ({
+          leftWidget: { ...state.leftWidget, ...widget }
+        }))
+      },
+
+      setRightWidget: (widget) => {
+        set((state) => ({
+          rightWidget: { ...state.rightWidget, ...widget }
+        }))
+      },
+
+      resetWidgetPositions: () => {
+        set({
+          leftWidget: DEFAULT_LEFT_WIDGET,
+          rightWidget: DEFAULT_RIGHT_WIDGET
+        })
+      },
+
+      setHeroSubtitle: (text) => {
+        set({ heroSubtitle: text })
+      },
+
+      setSiteName: (name) => {
+        set({ siteName: name })
       }
     }),
     {
@@ -88,7 +153,11 @@ export const useSettingsStore = create<SettingsState>()(
         theme: state.theme,
         sidebarOpen: state.sidebarOpen,
         heroBackground: state.heroBackground,
-        typewriterTexts: state.typewriterTexts
+        typewriterTexts: state.typewriterTexts,
+        leftWidget: state.leftWidget,
+        rightWidget: state.rightWidget,
+        heroSubtitle: state.heroSubtitle,
+        siteName: state.siteName
       }),
       onRehydrateStorage: () => (state) => {
         // 应用保存的主题

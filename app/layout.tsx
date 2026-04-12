@@ -3,6 +3,7 @@ import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import MobileNav from '@/components/layout/MobileNav'
 import ToastContainer from '@/components/ui/Toast'
+import WidgetManager from '@/components/widgets/WidgetManager'
 
 export const metadata: Metadata = {
   title: 'BlogPro - 个人笔记空间',
@@ -21,6 +22,8 @@ export default function RootLayout({
         <main className="relative">
           {children}
         </main>
+        {/* 趣味组件管理器 */}
+        <WidgetManager />
         <MobileNav />
         <ToastContainer />
       </body>

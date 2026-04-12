@@ -21,7 +21,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { theme, setTheme, _hasHydrated } = useSettingsStore()
+  const { theme, setTheme, _hasHydrated, siteName } = useSettingsStore()
 
   // 确保客户端渲染完成
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function Navbar() {
                   scrolled || !isHome ? 'text-foreground' : 'text-white'
                 )}
               >
-                BlogPro
+                {siteName}
               </span>
             </Link>
 

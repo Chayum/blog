@@ -31,7 +31,9 @@ export default function SettingsPage() {
   const { 
     theme, setTheme, 
     heroBackground, setHeroBackground,
-    typewriterTexts, setTypewriterTexts, resetTypewriterTexts
+    typewriterTexts, setTypewriterTexts, resetTypewriterTexts,
+    heroSubtitle, setHeroSubtitle,
+    siteName, setSiteName
   } = useSettingsStore()
   const notes = useNotesStore((state) => state.notes)
   const sites = useSitesStore((state) => state.sites)
@@ -377,6 +379,40 @@ export default function SettingsPage() {
                     <Plus size={18} />
                   </motion.button>
                 </div>
+              </div>
+
+              {/* 副标题设置 */}
+              <div>
+                <label className="text-sm font-medium text-foreground-secondary mb-3 block">
+                  副标题
+                </label>
+                <input
+                  type="text"
+                  value={heroSubtitle}
+                  onChange={(e) => setHeroSubtitle(e.target.value)}
+                  placeholder="输入英雄页副标题..."
+                  className="w-full input text-sm"
+                />
+                <p className="mt-1 text-xs text-foreground-secondary">
+                  显示在打字机标题下方
+                </p>
+              </div>
+
+              {/* 网站名称设置 */}
+              <div>
+                <label className="text-sm font-medium text-foreground-secondary mb-3 block">
+                  网站名称
+                </label>
+                <input
+                  type="text"
+                  value={siteName}
+                  onChange={(e) => setSiteName(e.target.value)}
+                  placeholder="输入网站名称..."
+                  className="w-full input text-sm"
+                />
+                <p className="mt-1 text-xs text-foreground-secondary">
+                  显示在导航栏左侧
+                </p>
               </div>
             </div>
           </div>

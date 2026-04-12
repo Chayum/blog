@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Filter, X, SortAsc, BookOpen, Trash2, Download, CheckSquare, Square } from 'lucide-react'
 import { useNotesStore, Note } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import PageTransition, { FadeIn, StaggerContainer, StaggerItem } from '@/components/layout/PageTransition'
 import NoteCard from '@/components/note/NoteCard'
 import Link from 'next/link'
@@ -20,6 +21,12 @@ function NotesPageContent() {
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [isBatchMode, setIsBatchMode] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; noteId: string | null; title: string }>({ 
+    isOpen: false, 
+    noteId: null, 
+    title: '' 
+  })
+  const [batchDeleteModal, setBatchDeleteModal] = useState(false)
   
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -112,10 +119,15 @@ function NotesPageContent() {
     const note = notes.find((n) => n.id === id)
     if (!note) return
     
-    if (confirm(`确定要删除笔记"${note.title}"吗？此操作不可恢复。`)) {
-      deleteNote(id)
+    setDeleteModal({ isOpen: true, noteId: id, title: note.title })
+  }
+
+  const handleConfirmDelete = () => {
+    if (deleteModal.noteId) {
+      deleteNote(deleteModal.noteId)
       toast.success('笔记已删除')
     }
+    setDeleteModal({ isOpen: false, noteId: null, title: '' })
   }
 
   // 切换批量选择
@@ -143,13 +155,16 @@ function NotesPageContent() {
   // 批量删除
   const handleBatchDelete = () => {
     if (selectedNotes.size === 0) return
-    
-    if (confirm(`确定要删除选中的 ${selectedNotes.size} 篇笔记吗？此操作不可恢复。`)) {
-      selectedNotes.forEach(id => deleteNote(id))
-      setSelectedNotes(new Set())
-      setIsBatchMode(false)
-      toast.success(`已删除 ${selectedNotes.size} 篇笔记`)
-    }
+    setBatchDeleteModal(true)
+  }
+
+  const handleConfirmBatchDelete = () => {
+    const count = selectedNotes.size
+    selectedNotes.forEach(id => deleteNote(id))
+    setSelectedNotes(new Set())
+    setIsBatchMode(false)
+    setBatchDeleteModal(false)
+    toast.success(`已删除 ${count} 篇笔记`)
   }
 
   // 批量导出
@@ -412,6 +427,30 @@ function NotesPageContent() {
 
       {/* 底部留白 */}
       <div className="h-16" />
+
+      {/* 删除确认弹窗 */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        title="删除笔记"
+        message={`确定要删除笔记"${deleteModal.title}"吗？此操作不可恢复。`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteModal({ isOpen: false, noteId: null, title: '' })}
+        type="danger"
+        confirmText="删除"
+        cancelText="取消"
+      />
+
+      {/* 批量删除确认弹窗 */}
+      <ConfirmModal
+        isOpen={batchDeleteModal}
+        title="批量删除"
+        message={`确定要删除选中的 ${selectedNotes.size} 篇笔记吗？此操作不可恢复。`}
+        onConfirm={handleConfirmBatchDelete}
+        onCancel={() => setBatchDeleteModal(false)}
+        type="danger"
+        confirmText="删除"
+        cancelText="取消"
+      />
     </PageTransition>
   )
 }

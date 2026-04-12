@@ -9,6 +9,7 @@ import { useSitesStore } from '@/store/sitesStore'
 import PageTransition, { FadeIn, StaggerContainer, StaggerItem } from '@/components/layout/PageTransition'
 import NoteCard from '@/components/note/NoteCard'
 import HeroSection from '@/components/hero/HeroSection'
+import CasualNotes from '@/components/casual/CasualNotes'
 
 export default function HomePage() {
   // 检测 Zustand hydration 是否完成
@@ -69,6 +70,11 @@ export default function HomePage() {
                 <div className="text-sm text-foreground-secondary">导航分组</div>
               </div>
             </div>
+          </FadeIn>
+
+          {/* 随笔便签 */}
+          <FadeIn delay={0.05} className="mb-16">
+            <CasualNotes />
           </FadeIn>
 
           {/* 置顶笔记 */}

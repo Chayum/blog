@@ -8,6 +8,7 @@ import ScrollIndicator from '@/components/ui/ScrollIndicator'
 export default function HeroSection() {
   const heroBackground = useSettingsStore((state) => state.heroBackground)
   const typewriterTexts = useSettingsStore((state) => state.typewriterTexts)
+  const heroSubtitle = useSettingsStore((state) => state.heroSubtitle)
   
   const { displayText, showCursor } = useTypewriter({
     texts: typewriterTexts,
@@ -86,7 +87,7 @@ export default function HeroSection() {
           transition={{ delay: 0.5, duration: 0.5 }}
           className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-12"
         >
-          记录思考 · 分享知识 · 探索无限可能
+          {heroSubtitle}
         </motion.p>
 
         {/* 快捷按钮 */}

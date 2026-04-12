@@ -9,6 +9,7 @@ import rehypeRaw from 'rehype-raw'
 import { ArrowLeft, Edit, Calendar, Clock, Share2, Check, Download, Trash2 } from 'lucide-react'
 import { useNotesStore } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import PageTransition, { FadeIn } from '@/components/layout/PageTransition'
 import Link from 'next/link'
 import clsx from 'clsx'
@@ -52,6 +53,7 @@ export default function NoteDetailPage() {
   const [copied, setCopied] = useState(false)
   const [readProgress, setReadProgress] = useState(0)
   const [activeHeading, setActiveHeading] = useState<string>('')
+  const [deleteModal, setDeleteModal] = useState(false)
   
   // 目录容器和目录项的 ref
   const tocContainerRef = useRef<HTMLDivElement>(null)
@@ -160,11 +162,14 @@ export default function NoteDetailPage() {
   // 删除笔记并返回列表
   const handleDelete = () => {
     if (!note) return
-    if (confirm('确定要删除这篇笔记吗？')) {
-      deleteNote(note.id)
-      toast.success('笔记已删除')
-      router.push('/notes')
-    }
+    setDeleteModal(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!note) return
+    deleteNote(note.id)
+    toast.success('笔记已删除')
+    router.push('/notes')
   }
 
   // 格式化日期
@@ -420,6 +425,18 @@ export default function NoteDetailPage() {
 
       {/* 底部留白 */}
       <div className="h-16" />
+
+      {/* 删除确认弹窗 */}
+      <ConfirmModal
+        isOpen={deleteModal}
+        title="删除笔记"
+        message={note ? `确定要删除笔记"${note.title}"吗？此操作不可恢复。` : '确定要删除这篇笔记吗？'}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteModal(false)}
+        type="danger"
+        confirmText="删除"
+        cancelText="取消"
+      />
     </PageTransition>
   )
 }
