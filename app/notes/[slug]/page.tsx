@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
@@ -11,6 +11,7 @@ import { useNotesStore } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
 import PageTransition, { FadeIn } from '@/components/layout/PageTransition'
 import Link from 'next/link'
+import clsx from 'clsx'
 
 interface TocItem {
   level: number
@@ -50,6 +51,11 @@ export default function NoteDetailPage() {
   const toast = useToast()
   const [copied, setCopied] = useState(false)
   const [readProgress, setReadProgress] = useState(0)
+  const [activeHeading, setActiveHeading] = useState<string>('')
+  
+  // 目录容器和目录项的 ref
+  const tocContainerRef = useRef<HTMLDivElement>(null)
+  const tocItemRefs = useRef<Map<string, HTMLAnchorElement>>(new Map())
 
   // 提取目录
   const toc = useMemo(() => {
@@ -70,18 +76,63 @@ export default function NoteDetailPage() {
     return items
   }, [note])
 
-  // 滚动进度
+  // 滚动进度和高亮目录
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY
       const docHeight = document.documentElement.scrollHeight - window.innerHeight
       const progress = Math.min(100, Math.round((scrollTop / docHeight) * 100))
       setReadProgress(progress)
+
+      // 基于滚动位置计算当前高亮标题
+      const scrollPosition = window.scrollY + 150 // 偏移量，考虑导航栏高度
+      let currentHeading = ''
+
+      // 遍历所有标题，找到最接近视口顶部的标题
+      for (const item of toc) {
+        const element = document.getElementById(item.id)
+        if (element) {
+          const offsetTop = element.offsetTop
+          if (offsetTop <= scrollPosition) {
+            currentHeading = item.id
+          } else {
+            break // 一旦超过当前滚动位置就停止
+          }
+        }
+      }
+
+      setActiveHeading(currentHeading)
     }
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    // 初始化时执行一次
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [toc])
+
+  // 自动滚动目录，使高亮项保持在可视区域中央
+  useEffect(() => {
+    if (!activeHeading || !tocContainerRef.current) return
+    
+    const activeElement = tocItemRefs.current.get(activeHeading)
+    if (!activeElement) return
+    
+    const container = tocContainerRef.current
+    const containerHeight = container.clientHeight
+    const elementTop = activeElement.offsetTop
+    const elementHeight = activeElement.clientHeight
+    
+    // 计算滚动位置，使元素居中显示
+    const scrollTop = elementTop - containerHeight / 2 + elementHeight / 2
+    
+    container.scrollTo({
+      top: Math.max(0, scrollTop),
+      behavior: 'smooth'
+    })
+  }, [activeHeading])
 
   // 复制链接
   const copyLink = () => {
@@ -316,21 +367,51 @@ export default function NoteDetailPage() {
         {/* 侧边目录 */}
         {toc.length > 0 && (
           <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-24">
-              <h3 className="text-sm font-semibold mb-4 text-foreground-secondary uppercase tracking-wider">
+            <div 
+              ref={tocContainerRef}
+              className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+            >
+              <h3 className="text-sm font-semibold mb-4 text-foreground-secondary uppercase tracking-wider sticky top-0 bg-background py-2">
                 目录
               </h3>
-              <nav className="space-y-2">
-                {toc.map((item, idx) => (
-                  <a
-                    key={idx}
-                    href={`#${item.id}`}
-                    className="block text-sm transition-colors hover:text-accent text-foreground-secondary"
-                    style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
-                  >
-                    {item.text}
-                  </a>
-                ))}
+              <nav className="space-y-1 pb-4">
+                {toc.map((item, idx) => {
+                  const isActive = activeHeading === item.id
+                  return (
+                    <a
+                      key={idx}
+                      ref={(el) => {
+                        if (el) {
+                          tocItemRefs.current.set(item.id, el)
+                        }
+                      }}
+                      href={`#${item.id}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        const element = document.getElementById(item.id)
+                        if (element) {
+                          const offset = 100 // 留出导航栏空间
+                          const elementPosition = element.getBoundingClientRect().top + window.scrollY
+                          window.scrollTo({
+                            top: elementPosition - offset,
+                            behavior: 'smooth'
+                          })
+                          // 更新 URL hash 但不跳转
+                          window.history.pushState(null, '', `#${item.id}`)
+                        }
+                      }}
+                      className={clsx(
+                        'block text-sm py-1.5 pr-2 border-l-2 transition-all duration-200',
+                        isActive
+                          ? 'border-accent text-accent font-medium'
+                          : 'border-transparent text-foreground-secondary hover:text-foreground hover:border-border'
+                      )}
+                      style={{ paddingLeft: `${(item.level - 1) * 12 + 12}px` }}
+                    >
+                      {item.text}
+                    </a>
+                  )
+                })}
               </nav>
             </div>
           </aside>
