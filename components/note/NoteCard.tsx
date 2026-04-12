@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Pin } from 'lucide-react'
+import { Pin, Check } from 'lucide-react'
 import Link from 'next/link'
 import { Note } from '@/store/notesStore'
 import clsx from 'clsx'
@@ -11,9 +11,20 @@ interface NoteCardProps {
   showPin?: boolean
   onDelete?: (id: string) => void
   onTogglePin?: (id: string) => void
+  isBatchMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export default function NoteCard({ note, showPin = false, onDelete, onTogglePin }: NoteCardProps) {
+export default function NoteCard({ 
+  note, 
+  showPin = false, 
+  onDelete, 
+  onTogglePin, 
+  isBatchMode = false,
+  isSelected = false,
+  onToggleSelect
+}: NoteCardProps) {
   // 提取摘要
   const getExcerpt = (content: string): string => {
     // 移除markdown语法
@@ -49,31 +60,60 @@ export default function NoteCard({ note, showPin = false, onDelete, onTogglePin 
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
+      whileHover={isBatchMode ? {} : { y: -4 }}
       transition={{ duration: 0.2 }}
-      className="card card-hover group relative"
+      className={clsx(
+        "card group relative",
+        !isBatchMode && "card-hover",
+        isSelected && "ring-2 ring-accent ring-offset-2"
+      )}
+      onClick={isBatchMode && onToggleSelect ? () => onToggleSelect(note.id) : undefined}
     >
+      {/* 批量选择框 */}
+      {isBatchMode && (
+        <div className="absolute top-3 left-3 z-10">
+          <div className={clsx(
+            "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors",
+            isSelected 
+              ? "bg-accent border-accent" 
+              : "border-foreground/20 bg-background"
+          )}>
+            {isSelected && <Check size={14} className="text-white" />}
+          </div>
+        </div>
+      )}
+
       {/* 置顶标识 */}
-      {note.isPinned && (
+      {note.isPinned && !isBatchMode && (
         <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
           <Pin size={14} className="text-accent" />
         </div>
       )}
 
-      <Link href={`/notes/${note.id}`} className="block">
+      <Link href={isBatchMode ? '#' : `/notes/${note.id}`} className="block" onClick={isBatchMode ? (e) => e.preventDefault() : undefined}>
         {/* 标题 */}
-        <h3 className="text-lg font-semibold text-foreground group-hover:text-accent transition-colors mb-2 line-clamp-2">
+        <h3 className={clsx(
+          "text-lg font-semibold mb-2 line-clamp-2",
+          isBatchMode ? "pl-8" : "",
+          isBatchMode ? "" : "text-foreground group-hover:text-accent transition-colors"
+        )}>
           {note.title}
         </h3>
 
         {/* 摘要 */}
-        <p className="text-sm text-foreground-secondary mb-4 line-clamp-3">
+        <p className={clsx(
+          "text-sm text-foreground-secondary mb-4 line-clamp-3",
+          isBatchMode && "pl-8"
+        )}>
           {getExcerpt(note.content)}
         </p>
       </Link>
 
       {/* 元信息 */}
-      <div className="flex items-center justify-between">
+      <div className={clsx(
+        "flex items-center justify-between",
+        isBatchMode && "pl-8"
+      )}>
         <div className="flex items-center gap-3 text-xs text-foreground-secondary">
           <span>{formatDate(note.updatedAt)}</span>
           <span>·</span>
@@ -81,7 +121,7 @@ export default function NoteCard({ note, showPin = false, onDelete, onTogglePin 
         </div>
 
         {/* 操作按钮 */}
-        {showPin && (onDelete || onTogglePin) && (
+        {!isBatchMode && showPin && (onDelete || onTogglePin) && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onTogglePin && (
               <motion.button

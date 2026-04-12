@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Search, Filter, X, SortAsc, BookOpen, Trash2 } from 'lucide-react'
-import { useNotesStore } from '@/store/notesStore'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, Filter, X, SortAsc, BookOpen, Trash2, Download, CheckSquare, Square } from 'lucide-react'
+import { useNotesStore, Note } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
 import PageTransition, { FadeIn, StaggerContainer, StaggerItem } from '@/components/layout/PageTransition'
 import NoteCard from '@/components/note/NoteCard'
@@ -18,6 +18,8 @@ function NotesPageContent() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortBy, setSortBy] = useState<SortBy>('updatedAt')
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [isBatchMode, setIsBatchMode] = useState(false)
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
   
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -116,15 +118,174 @@ function NotesPageContent() {
     }
   }
 
+  // 切换批量选择
+  const toggleNoteSelection = (id: string) => {
+    setSelectedNotes(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  // 全选/取消全选
+  const toggleSelectAll = () => {
+    if (selectedNotes.size === filteredNotes.length) {
+      setSelectedNotes(new Set())
+    } else {
+      setSelectedNotes(new Set(filteredNotes.map(n => n.id)))
+    }
+  }
+
+  // 批量删除
+  const handleBatchDelete = () => {
+    if (selectedNotes.size === 0) return
+    
+    if (confirm(`确定要删除选中的 ${selectedNotes.size} 篇笔记吗？此操作不可恢复。`)) {
+      selectedNotes.forEach(id => deleteNote(id))
+      setSelectedNotes(new Set())
+      setIsBatchMode(false)
+      toast.success(`已删除 ${selectedNotes.size} 篇笔记`)
+    }
+  }
+
+  // 批量导出
+  const handleBatchExport = () => {
+    if (selectedNotes.size === 0) return
+
+    const selectedNoteData = notes.filter(n => selectedNotes.has(n.id))
+    
+    // 构建Markdown内容
+    let markdownContent = `# 批量导出的笔记 (${selectedNoteData.length}篇)\n\n`
+    markdownContent += `导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`
+    markdownContent += `---\n\n`
+    
+    selectedNoteData.forEach((note, index) => {
+      markdownContent += `## ${index + 1}. ${note.title}\n\n`
+      markdownContent += `> 标签: ${note.tags.map(t => `#${t}`).join(' ') || '无'}\n`
+      markdownContent += `> 创建时间: ${new Date(note.createdAt).toLocaleString('zh-CN')}\n`
+      markdownContent += `> 更新时间: ${new Date(note.updatedAt).toLocaleString('zh-CN')}\n\n`
+      markdownContent += `${note.content}\n\n`
+      markdownContent += `---\n\n`
+    })
+
+    // 下载文件
+    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `批量导出-${new Date().toISOString().split('T')[0]}-${selectedNoteData.length}篇笔记.md`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    toast.success(`已导出 ${selectedNoteData.length} 篇笔记`)
+    
+    // 退出批量模式
+    setIsBatchMode(false)
+    setSelectedNotes(new Set())
+  }
+
+  // 取消批量模式
+  const cancelBatchMode = () => {
+    setIsBatchMode(false)
+    setSelectedNotes(new Set())
+  }
+
   return (
     <PageTransition className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 pt-8">
       {/* 页面标题 */}
       <FadeIn className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">笔记列表</h1>
-        <p className="text-foreground-secondary">
-          共 {filteredNotes.length} 篇笔记
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">笔记列表</h1>
+            <p className="text-foreground-secondary">
+              共 {filteredNotes.length} 篇笔记
+            </p>
+          </div>
+          {!isBatchMode ? (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsBatchMode(true)}
+              className="btn btn-secondary"
+            >
+              <CheckSquare size={18} />
+              批量管理
+            </motion.button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-foreground-secondary mr-2">
+                已选择 {selectedNotes.size} 篇
+              </span>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={cancelBatchMode}
+                className="btn btn-ghost"
+              >
+                取消
+              </motion.button>
+            </div>
+          )}
+        </div>
       </FadeIn>
+
+      {/* 批量操作栏 */}
+      <AnimatePresence>
+        {isBatchMode && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6"
+          >
+            <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-accent/5 border border-accent/20">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={toggleSelectAll}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background hover:bg-background-secondary transition-colors"
+              >
+                {selectedNotes.size === filteredNotes.length && filteredNotes.length > 0 ? (
+                  <CheckSquare size={18} className="text-accent" />
+                ) : (
+                  <Square size={18} className="text-foreground-secondary" />
+                )}
+                <span className="text-sm font-medium">
+                  {selectedNotes.size === filteredNotes.length && filteredNotes.length > 0 ? '取消全选' : '全选'}
+                </span>
+              </motion.button>
+
+              <div className="h-6 w-px bg-border" />
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleBatchExport}
+                disabled={selectedNotes.size === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download size={18} />
+                <span className="text-sm font-medium">批量导出</span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleBatchDelete}
+                disabled={selectedNotes.size === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 size={18} />
+                <span className="text-sm font-medium">批量删除</span>
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 搜索和筛选栏 */}
       <FadeIn delay={0.1} className="mb-8 space-y-4">
@@ -219,7 +380,13 @@ function NotesPageContent() {
                   highlightId === note.id && 'ring-2 ring-accent ring-offset-2 ring-offset-background'
                 )}
               >
-                <NoteCard note={note} onDelete={handleDelete} />
+                <NoteCard 
+                  note={note} 
+                  onDelete={handleDelete}
+                  isBatchMode={isBatchMode}
+                  isSelected={selectedNotes.has(note.id)}
+                  onToggleSelect={toggleNoteSelection}
+                />
               </motion.div>
             </StaggerItem>
           ))}
