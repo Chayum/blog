@@ -246,18 +246,30 @@ function NoteCard({
         
         {/* 时间和删除按钮 */}
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-black/10">
-          <span 
-            className="text-[10px] text-gray-600 cursor-default" 
-            title={new Date(note.createdAt).toLocaleString('zh-CN', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          >
-            {formatTime(note.createdAt)}
-          </span>
+          <div className="relative">
+            <span className="text-[10px] text-gray-600">
+              {formatTime(note.createdAt)}
+            </span>
+            {/* 悬浮显示完整时间 */}
+            <AnimatePresence>
+              {isHovered && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded whitespace-nowrap pointer-events-none z-20"
+                >
+                  {new Date(note.createdAt).toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           
           <AnimatePresence>
             {isHovered && (
