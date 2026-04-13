@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
-import { Menu, X, Sun, Moon, Monitor, PenLine, BookOpen, Globe, Settings } from 'lucide-react'
+import { Menu, X, Sun, Moon, Monitor, PenLine, BookOpen, Globe, Settings, Lock } from 'lucide-react'
 import { useSettingsStore } from '@/store/settingsStore'
+import AdminSettings from '@/components/ui/AdminSettings'
 import clsx from 'clsx'
 
 const navItems = [
@@ -21,6 +22,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [adminSettingsOpen, setAdminSettingsOpen] = useState(false)
   const { theme, setTheme, _hasHydrated, siteName } = useSettingsStore()
 
   // 确保客户端渲染完成
@@ -135,6 +137,22 @@ export default function Navbar() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2">
+              {/* Admin Settings Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setAdminSettingsOpen(true)}
+                className={clsx(
+                  'p-2 rounded-lg transition-colors',
+                  scrolled || !isHome
+                    ? 'hover:bg-background-secondary text-foreground-secondary'
+                    : 'hover:bg-white/10 text-white/80'
+                )}
+                title="管理员设置"
+              >
+                <Lock size={20} />
+              </motion.button>
+
               {/* Theme Toggle */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -212,6 +230,12 @@ export default function Navbar() {
 
       {/* Spacer - 只在非首页显示，因为首页有全屏hero */}
       {!isHome && <div className="h-16" />}
+
+      {/* Admin Settings Modal */}
+      <AdminSettings 
+        isOpen={adminSettingsOpen} 
+        onClose={() => setAdminSettingsOpen(false)} 
+      />
     </>
   )
 }

@@ -52,7 +52,7 @@ function WritePageContent() {
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const content = e.target?.result as string
       if (!content) {
         toast.error('读取文件失败')
@@ -90,7 +90,7 @@ function WritePageContent() {
       }
 
       // 创建笔记
-      const newNote = addNote({
+      const newNote = await addNote({
         title,
         content: actualContent,
         tags,
@@ -98,9 +98,11 @@ function WritePageContent() {
       })
       toast.success(`已导入: ${title}`)
       // 使用 URL 参数传递高亮信息，并强制刷新确保数据同步
-      setTimeout(() => {
-        window.location.href = `/notes?highlight=${newNote.id}`
-      }, 100)
+      if (newNote?.id) {
+        setTimeout(() => {
+          window.location.href = `/notes?highlight=${newNote.id}`
+        }, 100)
+      }
     }
     reader.onerror = () => {
       toast.error('读取文件失败')

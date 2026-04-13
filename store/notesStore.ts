@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { notesApi } from '@/lib/api'
 
 export interface Note {
   id: string
@@ -17,32 +18,29 @@ export interface Note {
 interface NotesState {
   notes: Note[]
   _hasHydrated: boolean
+  _isSyncing: boolean
   setHasHydrated: (state: boolean) => void
-  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'slug' | 'readingTime' | 'isPinned'>) => Note
-  updateNote: (id: string, updates: Partial<Note>) => void
-  deleteNote: (id: string) => void
+  setNotes: (notes: Note[]) => void
+  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'slug' | 'readingTime' | 'isPinned'>) => Promise<Note | null>
+  updateNote: (id: string, updates: Partial<Note>) => Promise<void>
+  deleteNote: (id: string) => Promise<void>
   getNoteBySlug: (slug: string) => Note | undefined
   getPublicNotes: () => Note[]
   getPinnedNotes: () => Note[]
   getRecentNotes: (limit?: number) => Note[]
   getAllTags: () => string[]
   togglePin: (id: string) => void
+  syncFromApi: () => Promise<void>
 }
 
 const generateSlug = (title: string): string => {
-  // 先将中文转为拼音风格（简单处理：保留中文字符的Unicode编码）
-  // 或者使用更简洁的方式：移除所有非URL安全字符，只保留字母数字
   const sanitized = title
     .toLowerCase()
-    // 保留字母、数字、中文，其他替换为 -
     .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
 
-  // 如果处理后为空（纯中文标题），使用 "note" 作为前缀
   const slugBase = sanitized || 'note'
-
-  // 添加时间戳确保唯一性
   return `${slugBase}-${Date.now().toString(36)}`
 }
 
@@ -52,17 +50,58 @@ const calculateReadingTime = (content: string): number => {
   return Math.max(1, Math.ceil(words / wordsPerMinute))
 }
 
+// 从 API 响应解析 tags（可能是 JSON 字符串或数组）
+const parseTags = (tags: string | string[] | null): string[] => {
+  if (!tags) return []
+  if (Array.isArray(tags)) return tags
+  try {
+    return JSON.parse(tags)
+  } catch {
+    return []
+  }
+}
+
 export const useNotesStore = create<NotesState>()(
   persist(
     (set, get) => ({
       notes: [],
       _hasHydrated: false,
+      _isSyncing: false,
       
       setHasHydrated: (state) => {
         set({ _hasHydrated: state })
       },
 
-      addNote: (noteData) => {
+      setNotes: (notes) => {
+        // 确保每个 note 的 tags 都是数组
+        const normalizedNotes = notes.map(note => ({
+          ...note,
+          tags: parseTags(note.tags),
+        }))
+        set({ notes: normalizedNotes })
+      },
+      
+      // 从 API 同步数据
+      syncFromApi: async () => {
+        if (get()._isSyncing) return
+        set({ _isSyncing: true })
+        try {
+          const apiNotes = await notesApi.getAll()
+          const normalizedNotes = apiNotes.map((note: any) => ({
+            ...note,
+            tags: parseTags(note.tags),
+            isPublic: note.isPublic ?? true,
+            isPinned: note.isPinned ?? false,
+          }))
+          set({ notes: normalizedNotes })
+        } catch (error) {
+          console.error('Failed to sync notes from API:', error)
+        } finally {
+          set({ _isSyncing: false })
+        }
+      },
+
+      addNote: async (noteData) => {
         const now = new Date().toISOString()
         const slug = generateSlug(noteData.title)
         const newNote: Note = {
@@ -74,13 +113,42 @@ export const useNotesStore = create<NotesState>()(
           updatedAt: now,
           readingTime: calculateReadingTime(noteData.content)
         }
+        
+        // 先更新本地
         set((state) => ({
           notes: [newNote, ...state.notes]
         }))
-        return newNote
+        
+        // 尝试同步到 API
+        try {
+          const created = await notesApi.create({
+            title: newNote.title,
+            content: newNote.content,
+            tags: newNote.tags,
+            slug: newNote.slug,
+            readingTime: newNote.readingTime,
+          })
+          
+          // 更新本地 ID 为 API 返回的 ID（如果不同）
+          if (created.id !== newNote.id) {
+            set((state) => ({
+              notes: state.notes.map((note) =>
+                note.id === newNote.id ? { ...note, id: created.id } : note
+              )
+            }))
+          }
+          
+          return created
+        } catch (error) {
+          console.error('Failed to create note on API:', error)
+          return newNote // 返回本地创建的 note
+        }
       },
 
-      updateNote: (id, updates) => {
+      updateNote: async (id, updates) => {
+        const now = new Date().toISOString()
+        
+        // 先更新本地
         set((state) => ({
           notes: state.notes.map((note) => {
             if (note.id === id) {
@@ -88,7 +156,7 @@ export const useNotesStore = create<NotesState>()(
               return {
                 ...note,
                 ...updates,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
                 readingTime: updates.content ? calculateReadingTime(updatedContent) : note.readingTime,
                 slug: updates.title ? generateSlug(updates.title) : note.slug
               }
@@ -96,10 +164,28 @@ export const useNotesStore = create<NotesState>()(
             return note
           })
         }))
+        
+        // 尝试同步到 API
+        try {
+          await notesApi.update(id, {
+            ...updates,
+            readingTime: updates.content ? calculateReadingTime(updates.content) : undefined,
+          })
+        } catch (error) {
+          console.error('Failed to update note on API:', error)
+        }
       },
 
-      deleteNote: (id) => {
+      deleteNote: async (id) => {
+        // 先更新本地
         set((state) => ({ notes: state.notes.filter((note) => note.id !== id) }))
+        
+        // 尝试同步到 API
+        try {
+          await notesApi.delete(id)
+        } catch (error) {
+          console.error('Failed to delete note on API:', error)
+        }
       },
 
       getNoteBySlug: (slug) => {
@@ -130,11 +216,10 @@ export const useNotesStore = create<NotesState>()(
       },
 
       togglePin: (id) => {
-        set((state) => ({
-          notes: state.notes.map((note) =>
-            note.id === id ? { ...note, isPinned: !note.isPinned } : note
-          )
-        }))
+        const note = get().notes.find((n) => n.id === id)
+        if (note) {
+          get().updateNote(id, { isPinned: !note.isPinned })
+        }
       }
     }),
     {

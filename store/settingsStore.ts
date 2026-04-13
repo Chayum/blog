@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { settingsApi } from '@/lib/api'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -27,6 +28,7 @@ interface SettingsState {
   heroBackground: string | null  // base64 图片或渐变预设
   typewriterTexts: string[]      // 打字机文字列表
   _hasHydrated: boolean          // hydration 状态
+  _isSyncing: boolean             // API 同步状态
   leftWidget: WidgetConfig       // 左侧趣味组件
   rightWidget: WidgetConfig      // 右侧趣味组件
   heroSubtitle: string           // 英雄页副标题
@@ -44,6 +46,7 @@ interface SettingsState {
   resetWidgetPositions: () => void
   setHeroSubtitle: (text: string) => void
   setSiteName: (name: string) => void
+  syncFromApi: () => Promise<void>
 }
 
 // 默认组件配置
@@ -69,6 +72,7 @@ export const useSettingsStore = create<SettingsState>()(
       heroBackground: null,
       typewriterTexts: DEFAULT_TYPEWRITER_TEXTS,
       _hasHydrated: false,
+      _isSyncing: false,
       leftWidget: DEFAULT_LEFT_WIDGET,
       rightWidget: DEFAULT_RIGHT_WIDGET,
       heroSubtitle: '记录思考 · 分享知识 · 探索无限可能',
@@ -78,9 +82,56 @@ export const useSettingsStore = create<SettingsState>()(
         set({ _hasHydrated: state })
       },
 
+      // 从 API 同步设置
+      syncFromApi: async () => {
+        if (get()._isSyncing) return
+        set({ _isSyncing: true })
+        try {
+          const apiSettings = await settingsApi.getAll()
+          
+          // 解析 API 返回的设置并更新本地状态
+          const updates: Partial<SettingsState> = {}
+          
+          if (apiSettings.theme) updates.theme = apiSettings.theme as Theme
+          if (apiSettings.sidebarOpen !== undefined) updates.sidebarOpen = apiSettings.sidebarOpen
+          if (apiSettings.heroBackground !== undefined) updates.heroBackground = apiSettings.heroBackground
+          if (apiSettings.typewriterTexts) {
+            try {
+              updates.typewriterTexts = typeof apiSettings.typewriterTexts === 'string' 
+                ? JSON.parse(apiSettings.typewriterTexts) 
+                : apiSettings.typewriterTexts
+            } catch { /* keep default */ }
+          }
+          if (apiSettings.leftWidget) {
+            try {
+              updates.leftWidget = typeof apiSettings.leftWidget === 'string'
+                ? JSON.parse(apiSettings.leftWidget)
+                : apiSettings.leftWidget
+            } catch { /* keep default */ }
+          }
+          if (apiSettings.rightWidget) {
+            try {
+              updates.rightWidget = typeof apiSettings.rightWidget === 'string'
+                ? JSON.parse(apiSettings.rightWidget)
+                : apiSettings.rightWidget
+            } catch { /* keep default */ }
+          }
+          if (apiSettings.heroSubtitle) updates.heroSubtitle = apiSettings.heroSubtitle
+          if (apiSettings.siteName) updates.siteName = apiSettings.siteName
+          
+          set(updates)
+        } catch (error) {
+          console.error('Failed to sync settings from API:', error)
+        } finally {
+          set({ _isSyncing: false })
+        }
+      },
+
       setTheme: (theme) => {
         set({ theme })
         applyTheme(theme)
+        // 同步到 API
+        settingsApi.update('theme', theme).catch(console.error)
       },
 
       toggleTheme: () => {
@@ -92,44 +143,54 @@ export const useSettingsStore = create<SettingsState>()(
         } else if (currentTheme === 'dark') {
           newTheme = 'system'
         } else {
-          // system -> light
           newTheme = 'light'
         }
         
         set({ theme: newTheme })
         applyTheme(newTheme)
+        settingsApi.update('theme', newTheme).catch(console.error)
       },
 
       setSidebarOpen: (open) => {
         set({ sidebarOpen: open })
+        settingsApi.update('sidebarOpen', open).catch(console.error)
       },
 
       toggleSidebar: () => {
-        set((state) => ({ sidebarOpen: !state.sidebarOpen }))
+        const newValue = !get().sidebarOpen
+        set({ sidebarOpen: newValue })
+        settingsApi.update('sidebarOpen', newValue).catch(console.error)
       },
 
       setHeroBackground: (background) => {
         set({ heroBackground: background })
+        settingsApi.update('heroBackground', background).catch(console.error)
       },
 
       setTypewriterTexts: (texts) => {
         set({ typewriterTexts: texts })
+        settingsApi.update('typewriterTexts', JSON.stringify(texts)).catch(console.error)
       },
 
       resetTypewriterTexts: () => {
         set({ typewriterTexts: DEFAULT_TYPEWRITER_TEXTS })
+        settingsApi.update('typewriterTexts', JSON.stringify(DEFAULT_TYPEWRITER_TEXTS)).catch(console.error)
       },
 
       setLeftWidget: (widget) => {
-        set((state) => ({
-          leftWidget: { ...state.leftWidget, ...widget }
-        }))
+        set((state) => {
+          const newWidget = { ...state.leftWidget, ...widget }
+          settingsApi.update('leftWidget', JSON.stringify(newWidget)).catch(console.error)
+          return { leftWidget: newWidget }
+        })
       },
 
       setRightWidget: (widget) => {
-        set((state) => ({
-          rightWidget: { ...state.rightWidget, ...widget }
-        }))
+        set((state) => {
+          const newWidget = { ...state.rightWidget, ...widget }
+          settingsApi.update('rightWidget', JSON.stringify(newWidget)).catch(console.error)
+          return { rightWidget: newWidget }
+        })
       },
 
       resetWidgetPositions: () => {
@@ -137,14 +198,18 @@ export const useSettingsStore = create<SettingsState>()(
           leftWidget: DEFAULT_LEFT_WIDGET,
           rightWidget: DEFAULT_RIGHT_WIDGET
         })
+        settingsApi.update('leftWidget', JSON.stringify(DEFAULT_LEFT_WIDGET)).catch(console.error)
+        settingsApi.update('rightWidget', JSON.stringify(DEFAULT_RIGHT_WIDGET)).catch(console.error)
       },
 
       setHeroSubtitle: (text) => {
         set({ heroSubtitle: text })
+        settingsApi.update('heroSubtitle', text).catch(console.error)
       },
 
       setSiteName: (name) => {
         set({ siteName: name })
+        settingsApi.update('siteName', name).catch(console.error)
       }
     }),
     {

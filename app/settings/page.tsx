@@ -46,6 +46,44 @@ export default function SettingsPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
 
+  // 处理文件上传 - 必须在 hydration 检查之前定义
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      toast?.error('请上传图片文件')
+      return
+    }
+
+    // 检查文件大小 (限制 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast?.error('图片大小不能超过 2MB')
+      return
+    }
+
+    setIsUploading(true)
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string
+      setHeroBackground(base64)
+      setIsUploading(false)
+      toast?.success('背景图片已上传')
+    }
+    reader.onerror = () => {
+      setIsUploading(false)
+      toast?.error('上传失败')
+    }
+    reader.readAsDataURL(file)
+
+    // 重置 input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }, [setHeroBackground, toast])
+
   // hydration 未完成时显示加载状态
   if (!isHydrated) {
     return (
@@ -59,54 +97,16 @@ export default function SettingsPage() {
     )
   }
 
-  // 处理文件上传
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    // 检查文件类型
-    if (!file.type.startsWith('image/')) {
-      toast.error('请上传图片文件')
-      return
-    }
-
-    // 检查文件大小 (限制 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('图片大小不能超过 2MB')
-      return
-    }
-
-    setIsUploading(true)
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string
-      setHeroBackground(base64)
-      setIsUploading(false)
-      toast.success('背景图片已上传')
-    }
-    reader.onerror = () => {
-      setIsUploading(false)
-      toast.error('上传失败')
-    }
-    reader.readAsDataURL(file)
-
-    // 重置 input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }, [setHeroBackground, toast])
-
   // 选择预设背景
   const selectPresetBackground = (gradient: string) => {
     setHeroBackground(gradient)
-    toast.success('背景已更新')
+    toast?.success('背景已更新')
   }
 
   // 清除背景
   const clearBackground = () => {
     setHeroBackground(null)
-    toast.success('背景已重置')
+    toast?.success('背景已重置')
   }
 
   // 添加打字机文字
@@ -114,7 +114,7 @@ export default function SettingsPage() {
     if (!newText.trim()) return
     setTypewriterTexts([...typewriterTexts, newText.trim()])
     setNewText('')
-    toast.success('已添加')
+    toast?.success('已添加')
   }
 
   // 删除打字机文字
@@ -137,7 +137,7 @@ export default function SettingsPage() {
     setTypewriterTexts(newTexts)
     setEditingIndex(null)
     setEditText('')
-    toast.success('已更新')
+    toast?.success('已更新')
   }
 
   // 取消编辑
@@ -163,7 +163,7 @@ export default function SettingsPage() {
     a.click()
     URL.revokeObjectURL(url)
 
-    toast.success('数据已导出')
+    toast?.success('数据已导出')
   }
 
   // 清除所有数据
@@ -171,7 +171,7 @@ export default function SettingsPage() {
     if (confirm('确定要清除所有数据吗？此操作不可恢复！')) {
       if (confirm('再次确认：所有笔记和网站数据都将被删除！')) {
         localStorage.clear()
-        toast.success('数据已清除，请刷新页面')
+        toast?.success('数据已清除，请刷新页面')
         setTimeout(() => window.location.reload(), 1000)
       }
     }
