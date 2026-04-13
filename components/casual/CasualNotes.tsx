@@ -246,7 +246,16 @@ function NoteCard({
         
         {/* 时间和删除按钮 */}
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-black/10">
-          <span className="text-[10px] text-gray-600">
+          <span 
+            className="text-[10px] text-gray-600 cursor-default" 
+            title={new Date(note.createdAt).toLocaleString('zh-CN', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          >
             {formatTime(note.createdAt)}
           </span>
           
