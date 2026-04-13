@@ -8,6 +8,7 @@ import PageTransition, { FadeIn, StaggerContainer, StaggerItem } from '@/compone
 import SiteGroupCard from '@/components/site/SiteGroupCard'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { Site } from '@/store/sitesStore'
+import { useToast } from '@/components/ui/Toast'
 
 export default function SitesPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -27,6 +28,9 @@ export default function SitesPage() {
   // 编辑弹窗内容 ref
   const editModalRef = useRef<HTMLDivElement>(null)
   
+  // Toast
+  const toast = useToast()
+  
   // 检测 Zustand hydration 是否完成
   const hasHydrated = useSitesStore((state) => state._hasHydrated)
   // 响应式订阅
@@ -37,12 +41,17 @@ export default function SitesPage() {
   const deleteSite = useSitesStore((state) => state.deleteSite)
 
   // 添加分组
-  const handleAddGroup = () => {
+  const handleAddGroup = async () => {
     if (!newGroupName.trim()) return
-    addGroup(newGroupName.trim(), newGroupIcon)
-    setNewGroupName('')
-    setNewGroupIcon('📁')
-    setShowAddGroup(false)
+    const result = await addGroup(newGroupName.trim(), newGroupIcon)
+    if (result.success) {
+      toast.success('分组已添加')
+      setNewGroupName('')
+      setNewGroupIcon('📁')
+      setShowAddGroup(false)
+    } else {
+      toast.error(result.error || '添加失败，请先登录管理员')
+    }
   }
   
   // 打开编辑弹窗
@@ -54,25 +63,35 @@ export default function SitesPage() {
   }
   
   // 保存编辑
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingSite || !editName.trim() || !editUrl.trim()) return
     
     const domain = editUrl.startsWith('http') ? editUrl : `https://${editUrl}`
     
-    updateSite(editingSite.id, {
+    const result = await updateSite(editingSite.id, {
       name: editName.trim(),
       url: domain,
       description: editDescription.trim()
     })
     
-    setEditingSite(null)
+    if (result.success) {
+      toast.success('网站已更新')
+      setEditingSite(null)
+    } else {
+      toast.error(result.error || '更新失败，请先登录管理员')
+    }
   }
   
   // 确认删除
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingSiteId) {
-      deleteSite(deletingSiteId)
-      setDeletingSiteId(null)
+      const result = await deleteSite(deletingSiteId)
+      if (result.success) {
+        toast.success('网站已删除')
+        setDeletingSiteId(null)
+      } else {
+        toast.error(result.error || '删除失败，请先登录管理员')
+      }
     }
   }
 

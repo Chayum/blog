@@ -27,13 +27,13 @@ interface SitesState {
   setHasHydrated: (state: boolean) => void
   setGroups: (groups: SiteGroup[]) => void
   setSites: (sites: Site[]) => void
-  addGroup: (name: string, icon: string) => Promise<void>
-  updateGroup: (id: string, updates: Partial<SiteGroup>) => Promise<void>
-  deleteGroup: (id: string) => Promise<void>
+  addGroup: (name: string, icon: string) => Promise<{ success: boolean; error?: string }>
+  updateGroup: (id: string, updates: Partial<SiteGroup>) => Promise<{ success: boolean; error?: string }>
+  deleteGroup: (id: string) => Promise<{ success: boolean; error?: string }>
   reorderGroups: (groups: SiteGroup[]) => void
-  addSite: (site: Omit<Site, 'id' | 'createdAt' | 'order'>) => Promise<void>
-  updateSite: (id: string, updates: Partial<Site>) => Promise<void>
-  deleteSite: (id: string) => Promise<void>
+  addSite: (site: Omit<Site, 'id' | 'createdAt' | 'order'>) => Promise<{ success: boolean; error?: string }>
+  updateSite: (id: string, updates: Partial<Site>) => Promise<{ success: boolean; error?: string }>
+  deleteSite: (id: string) => Promise<{ success: boolean; error?: string }>
   getSitesByGroup: (groupId: string) => Site[]
   getAllSites: () => Site[]
   searchSites: (query: string) => Site[]
@@ -110,15 +110,22 @@ export const useSitesStore = create<SitesState>()(
         // 先更新本地
         set((state) => ({ groups: [...state.groups, newGroup] }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await groupsApi.create({ name, icon })
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to create group on API:', error)
+          // 回滚
+          set((state) => ({ groups: state.groups.filter((g) => g.id !== newGroup.id) }))
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
       updateGroup: async (id, updates) => {
+        // 保存旧数据用于回滚
+        const oldGroup = get().groups.find((g) => g.id === id)
+        
         // 先更新本地
         set((state) => ({
           groups: state.groups.map((group) =>
@@ -126,26 +133,47 @@ export const useSitesStore = create<SitesState>()(
           )
         }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await groupsApi.update(id, updates)
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to update group on API:', error)
+          // 回滚
+          if (oldGroup) {
+            set((state) => ({
+              groups: state.groups.map((g) => g.id === id ? oldGroup : g)
+            }))
+          }
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
       deleteGroup: async (id) => {
+        // 保存旧数据用于回滚
+        const oldGroup = get().groups.find((g) => g.id === id)
+        const oldSites = get().sites.filter((s) => s.groupId === id)
+        
         // 先更新本地
         set((state) => ({
           groups: state.groups.filter((group) => group.id !== id),
           sites: state.sites.filter((site) => site.groupId !== id)
         }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await groupsApi.delete(id)
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to delete group on API:', error)
+          // 回滚
+          if (oldGroup) {
+            set((state) => ({ groups: [oldGroup, ...state.groups] }))
+          }
+          if (oldSites.length > 0) {
+            set((state) => ({ sites: [...oldSites, ...state.sites] }))
+          }
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
@@ -165,7 +193,7 @@ export const useSitesStore = create<SitesState>()(
         // 先更新本地
         set((state) => ({ sites: [...state.sites, newSite] }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await sitesApi.create({
             name: newSite.name,
@@ -173,12 +201,19 @@ export const useSitesStore = create<SitesState>()(
             description: newSite.description,
             groupId: newSite.groupId,
           })
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to create site on API:', error)
+          // 回滚
+          set((state) => ({ sites: state.sites.filter((s) => s.id !== newSite.id) }))
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
       updateSite: async (id, updates) => {
+        // 保存旧数据用于回滚
+        const oldSite = get().sites.find((s) => s.id === id)
+        
         // 先更新本地
         set((state) => ({
           sites: state.sites.map((site) =>
@@ -186,23 +221,40 @@ export const useSitesStore = create<SitesState>()(
           )
         }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await sitesApi.update(id, updates)
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to update site on API:', error)
+          // 回滚
+          if (oldSite) {
+            set((state) => ({
+              sites: state.sites.map((s) => s.id === id ? oldSite : s)
+            }))
+          }
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
       deleteSite: async (id) => {
+        // 保存旧数据用于回滚
+        const oldSite = get().sites.find((s) => s.id === id)
+        
         // 先更新本地
         set((state) => ({ sites: state.sites.filter((site) => site.id !== id) }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await sitesApi.delete(id)
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to delete site on API:', error)
+          // 回滚
+          if (oldSite) {
+            set((state) => ({ sites: [oldSite, ...state.sites] }))
+          }
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 

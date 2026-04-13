@@ -21,9 +21,9 @@ interface NotesState {
   _isSyncing: boolean
   setHasHydrated: (state: boolean) => void
   setNotes: (notes: Note[]) => void
-  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'slug' | 'readingTime' | 'isPinned'>) => Promise<Note | null>
-  updateNote: (id: string, updates: Partial<Note>) => Promise<void>
-  deleteNote: (id: string) => Promise<void>
+  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'slug' | 'readingTime' | 'isPinned'>) => Promise<{ success: boolean; note?: any; error?: string }>
+  updateNote: (id: string, updates: Partial<Note>) => Promise<{ success: boolean; error?: string }>
+  deleteNote: (id: string) => Promise<{ success: boolean; error?: string }>
   getNoteBySlug: (slug: string) => Note | undefined
   getPublicNotes: () => Note[]
   getPinnedNotes: () => Note[]
@@ -119,7 +119,7 @@ export const useNotesStore = create<NotesState>()(
           notes: [newNote, ...state.notes]
         }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           const created = await notesApi.create({
             title: newNote.title,
@@ -138,15 +138,20 @@ export const useNotesStore = create<NotesState>()(
             }))
           }
           
-          return created
-        } catch (error) {
+          return { success: true, note: created }
+        } catch (error: any) {
           console.error('Failed to create note on API:', error)
-          return newNote // 返回本地创建的 note
+          // 回滚本地更改
+          set((state) => ({ notes: state.notes.filter((note) => note.id !== newNote.id) }))
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
       updateNote: async (id, updates) => {
         const now = new Date().toISOString()
+        
+        // 保存旧数据用于回滚
+        const oldNote = get().notes.find((n) => n.id === id)
         
         // 先更新本地
         set((state) => ({
@@ -165,26 +170,43 @@ export const useNotesStore = create<NotesState>()(
           })
         }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await notesApi.update(id, {
             ...updates,
             readingTime: updates.content ? calculateReadingTime(updates.content) : undefined,
           })
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to update note on API:', error)
+          // 回滚本地更改
+          if (oldNote) {
+            set((state) => ({
+              notes: state.notes.map((note) => note.id === id ? oldNote : note)
+            }))
+          }
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 
       deleteNote: async (id) => {
+        // 保存旧数据用于回滚
+        const oldNote = get().notes.find((n) => n.id === id)
+        
         // 先更新本地
         set((state) => ({ notes: state.notes.filter((note) => note.id !== id) }))
         
-        // 尝试同步到 API
+        // 同步到 API
         try {
           await notesApi.delete(id)
-        } catch (error) {
+          return { success: true }
+        } catch (error: any) {
           console.error('Failed to delete note on API:', error)
+          // 回滚本地更改
+          if (oldNote) {
+            set((state) => ({ notes: [oldNote, ...state.notes] }))
+          }
+          return { success: false, error: error.message || '同步失败' }
         }
       },
 

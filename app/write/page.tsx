@@ -22,16 +22,24 @@ function WritePageContent() {
   const existingNote = editId ? notes.find((n) => n.id === editId) : null
 
   const handleSave = useCallback(
-    (data: { title: string; content: string; tags: string[]; isPublic: boolean }) => {
+    async (data: { title: string; content: string; tags: string[]; isPublic: boolean }) => {
       setIsSaving(true)
 
       try {
         if (existingNote) {
-          updateNote(existingNote.id, data)
-          toast.success('笔记已更新')
+          const result = await updateNote(existingNote.id, data)
+          if (result.success) {
+            toast.success('笔记已更新')
+          } else {
+            toast.error(result.error || '更新失败，请先登录管理员')
+          }
         } else {
-          addNote(data)
-          toast.success('笔记已创建')
+          const result = await addNote(data)
+          if (result.success) {
+            toast.success('笔记已创建')
+          } else {
+            toast.error(result.error || '创建失败，请先登录管理员')
+          }
         }
 
         setTimeout(() => {
@@ -90,18 +98,22 @@ function WritePageContent() {
       }
 
       // 创建笔记
-      const newNote = await addNote({
+      const result = await addNote({
         title,
         content: actualContent,
         tags,
         isPublic: true
       })
-      toast.success(`已导入: ${title}`)
-      // 使用 URL 参数传递高亮信息，并强制刷新确保数据同步
-      if (newNote?.id) {
-        setTimeout(() => {
-          window.location.href = `/notes?highlight=${newNote.id}`
-        }, 100)
+      if (result.success) {
+        toast.success(`已导入: ${title}`)
+        // 使用 URL 参数传递高亮信息，并强制刷新确保数据同步
+        if (result.note?.id) {
+          setTimeout(() => {
+            window.location.href = `/notes?highlight=${result.note.id}`
+          }, 100)
+        }
+      } else {
+        toast.error(result.error || '导入失败，请先登录管理员')
       }
     }
     reader.onerror = () => {

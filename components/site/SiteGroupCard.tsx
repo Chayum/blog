@@ -6,6 +6,7 @@ import { Plus, Search, FolderOpen, ChevronDown, ChevronRight, Edit2, Trash2 } fr
 import { SiteGroup } from '@/store/sitesStore'
 import SiteCard from './SiteCard'
 import { useSitesStore } from '@/store/sitesStore'
+import { useToast } from '@/components/ui/Toast'
 
 interface SiteGroupCardProps {
   group: SiteGroup
@@ -26,6 +27,7 @@ export default function SiteGroupCard({
   const { updateGroup, deleteGroup } = useSitesStore()
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(group.name)
+  const toast = useToast()
 
   // 过滤站点（如果有搜索）
   const filteredSites = searchQuery
@@ -38,17 +40,27 @@ export default function SiteGroupCard({
     : sites.filter((site) => site.groupId === group.id)
 
   // 处理分组名称编辑
-  const handleNameSubmit = () => {
+  const handleNameSubmit = async () => {
     if (editName.trim() && editName !== group.name) {
-      updateGroup(group.id, { name: editName.trim() })
+      const result = await updateGroup(group.id, { name: editName.trim() })
+      if (result.success) {
+        toast.success('分组名称已更新')
+      } else {
+        toast.error(result.error || '更新失败，请先登录管理员')
+      }
     }
     setIsEditing(false)
   }
 
   // 处理删除分组
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm(`确定要删除"${group.name}"分组吗？分组内的网站也会被删除。`)) {
-      deleteGroup(group.id)
+      const result = await deleteGroup(group.id)
+      if (result.success) {
+        toast.success('分组已删除')
+      } else {
+        toast.error(result.error || '删除失败，请先登录管理员')
+      }
     }
   }
 
