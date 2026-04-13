@@ -76,7 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
       leftWidget: DEFAULT_LEFT_WIDGET,
       rightWidget: DEFAULT_RIGHT_WIDGET,
       heroSubtitle: '记录思考 · 分享知识 · 探索无限可能',
-      siteName: 'BlogPro',
+      siteName: '最强之人',
 
       setHasHydrated: (state) => {
         set({ _hasHydrated: state })

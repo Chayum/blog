@@ -7,7 +7,7 @@ import WidgetManager from '@/components/widgets/WidgetManager'
 import SyncProvider from '@/components/providers/SyncProvider'
 
 export const metadata: Metadata = {
-  title: 'BlogPro - 个人笔记空间',
+  title: '最强之人',
   description: '一个简洁、优雅的个人笔记博客系统',
 }
 
