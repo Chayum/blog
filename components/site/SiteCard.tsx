@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import { ExternalLink } from 'lucide-react'
 import { Site } from '@/store/sitesStore'
-import Image from 'next/image'
 
 interface SiteCardProps {
   site: Site
@@ -55,21 +54,25 @@ export default function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
       )}
 
       {/* 图标 */}
-      <div className="w-12 h-12 rounded-xl bg-background-secondary flex items-center justify-center mb-4 overflow-hidden">
-        <Image
-          src={site.favicon}
+      <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 overflow-hidden">
+        <img
+          src={`/api/favicon?url=${encodeURIComponent(site.url)}`}
           alt={site.name}
           width={28}
           height={28}
           className="object-contain"
           onError={(e) => {
-            // fallback到文字首字母
-            e.currentTarget.style.display = 'none'
-            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+            // 如果 API 返回默认图标也失败，显示首字母
+            const target = e.currentTarget as HTMLImageElement
+            target.style.display = 'none'
+            const fallback = target.nextElementSibling as HTMLElement
+            if (fallback) {
+              fallback.style.display = 'flex'
+            }
           }}
         />
-        <span className="hidden text-lg font-bold text-foreground-secondary">
-          {site.name.charAt(0)}
+        <span className="hidden text-lg font-bold text-accent">
+          {site.name.charAt(0).toUpperCase()}
         </span>
       </div>
 

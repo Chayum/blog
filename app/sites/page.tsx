@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Plus, FolderOpen } from 'lucide-react'
 import { useSitesStore } from '@/store/sitesStore'
@@ -23,6 +23,9 @@ export default function SitesPage() {
   
   // 删除网站状态
   const [deletingSiteId, setDeletingSiteId] = useState<string | null>(null)
+  
+  // 编辑弹窗内容 ref
+  const editModalRef = useRef<HTMLDivElement>(null)
   
   // 检测 Zustand hydration 是否完成
   const hasHydrated = useSitesStore((state) => state._hasHydrated)
@@ -55,13 +58,11 @@ export default function SitesPage() {
     if (!editingSite || !editName.trim() || !editUrl.trim()) return
     
     const domain = editUrl.startsWith('http') ? editUrl : `https://${editUrl}`
-    const favicon = `https://www.google.com/s2/favicons?domain=${new URL(domain).hostname}&sz=64`
     
     updateSite(editingSite.id, {
       name: editName.trim(),
       url: domain,
-      description: editDescription.trim(),
-      favicon
+      description: editDescription.trim()
     })
     
     setEditingSite(null)
@@ -246,9 +247,10 @@ export default function SitesPage() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => setEditingSite(null)}
+          onClick={() => {}}
         >
           <motion.div
+            ref={editModalRef}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
@@ -264,6 +266,12 @@ export default function SitesPage() {
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
+                  onBlur={(e) => {
+                    // 如果焦点移到弹窗内容区域，不关闭
+                    if (editModalRef.current?.contains(e.relatedTarget as Node)) {
+                      return
+                    }
+                  }}
                   placeholder="GitHub"
                   className="input"
                   autoFocus
@@ -276,6 +284,11 @@ export default function SitesPage() {
                   type="text"
                   value={editUrl}
                   onChange={(e) => setEditUrl(e.target.value)}
+                  onBlur={(e) => {
+                    if (editModalRef.current?.contains(e.relatedTarget as Node)) {
+                      return
+                    }
+                  }}
                   placeholder="https://github.com"
                   className="input"
                 />
@@ -287,6 +300,11 @@ export default function SitesPage() {
                   type="text"
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
+                  onBlur={(e) => {
+                    if (editModalRef.current?.contains(e.relatedTarget as Node)) {
+                      return
+                    }
+                  }}
                   placeholder="代码托管平台"
                   className="input"
                 />

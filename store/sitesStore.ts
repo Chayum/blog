@@ -6,7 +6,6 @@ export interface Site {
   name: string
   url: string
   description: string
-  favicon: string
   groupId: string
   createdAt: string
   order: number

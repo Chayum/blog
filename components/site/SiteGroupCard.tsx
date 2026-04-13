@@ -163,15 +163,13 @@ function AddSiteCard({ groupId }: { groupId: string }) {
   const handleSubmit = () => {
     if (!name.trim() || !url.trim()) return
     
-    // 简单的favicon获取
+    // favicon 现在通过 API 动态获取，不再需要预生成
     const domain = url.startsWith('http') ? url : `https://${url}`
-    const favicon = `https://www.google.com/s2/favicons?domain=${new URL(domain).hostname}&sz=64`
 
     addSite({
       name: name.trim(),
       url: domain,
       description: description.trim(),
-      favicon,
       groupId
     })
 
