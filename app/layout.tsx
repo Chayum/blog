@@ -5,6 +5,7 @@ import MobileNav from '@/components/layout/MobileNav'
 import ToastContainer from '@/components/ui/Toast'
 import WidgetManager from '@/components/widgets/WidgetManager'
 import SyncProvider from '@/components/providers/SyncProvider'
+import Footer from '@/components/layout/Footer'
 
 export const metadata: Metadata = {
   title: '最强之人',
@@ -24,6 +25,8 @@ export default function RootLayout({
           <main className="relative">
             {children}
           </main>
+          {/* 底部 Footer */}
+          <Footer />
           {/* 趣味组件管理器 */}
           <WidgetManager />
           <MobileNav />
