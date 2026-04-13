@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Moon, Sun, Monitor, Download, Trash2, ChevronRight, 
@@ -45,6 +45,36 @@ export default function SettingsPage() {
   const [newText, setNewText] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
+  
+  // Debounce refs for settings that sync on every change
+  const heroSubtitleDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const siteNameDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Debounced hero subtitle handler
+  const handleHeroSubtitleChange = useCallback((value: string) => {
+    if (heroSubtitleDebounceRef.current) {
+      clearTimeout(heroSubtitleDebounceRef.current)
+    }
+    heroSubtitleDebounceRef.current = setTimeout(async () => {
+      const result = await setHeroSubtitle(value)
+      if (!result.success) {
+        toast?.error(result.error || '保存失败，请先登录管理员')
+      }
+    }, 500)
+  }, [setHeroSubtitle, toast])
+  
+  // Debounced site name handler
+  const handleSiteNameChange = useCallback((value: string) => {
+    if (siteNameDebounceRef.current) {
+      clearTimeout(siteNameDebounceRef.current)
+    }
+    siteNameDebounceRef.current = setTimeout(async () => {
+      const result = await setSiteName(value)
+      if (!result.success) {
+        toast?.error(result.error || '保存失败，请先登录管理员')
+      }
+    }, 500)
+  }, [setSiteName, toast])
 
   // 处理文件上传 - 必须在 hydration 检查之前定义
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,11 +96,15 @@ export default function SettingsPage() {
     setIsUploading(true)
 
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const base64 = e.target?.result as string
-      setHeroBackground(base64)
+      const result = await setHeroBackground(base64)
       setIsUploading(false)
-      toast?.success('背景图片已上传')
+      if (result.success) {
+        toast?.success('背景图片已上传')
+      } else {
+        toast?.error(result.error || '上传失败，请先登录管理员')
+      }
     }
     reader.onerror = () => {
       setIsUploading(false)
@@ -98,29 +132,44 @@ export default function SettingsPage() {
   }
 
   // 选择预设背景
-  const selectPresetBackground = (gradient: string) => {
-    setHeroBackground(gradient)
-    toast?.success('背景已更新')
+  const selectPresetBackground = async (gradient: string) => {
+    const result = await setHeroBackground(gradient)
+    if (result.success) {
+      toast?.success('背景已更新')
+    } else {
+      toast?.error(result.error || '更新失败，请先登录管理员')
+    }
   }
 
   // 清除背景
-  const clearBackground = () => {
-    setHeroBackground(null)
-    toast?.success('背景已重置')
+  const clearBackground = async () => {
+    const result = await setHeroBackground(null)
+    if (result.success) {
+      toast?.success('背景已重置')
+    } else {
+      toast?.error(result.error || '重置失败，请先登录管理员')
+    }
   }
 
   // 添加打字机文字
-  const addTypewriterText = () => {
+  const addTypewriterText = async () => {
     if (!newText.trim()) return
-    setTypewriterTexts([...typewriterTexts, newText.trim()])
-    setNewText('')
-    toast?.success('已添加')
+    const result = await setTypewriterTexts([...typewriterTexts, newText.trim()])
+    if (result.success) {
+      setNewText('')
+      toast?.success('已添加')
+    } else {
+      toast?.error(result.error || '添加失败，请先登录管理员')
+    }
   }
 
   // 删除打字机文字
-  const removeTypewriterText = (index: number) => {
+  const removeTypewriterText = async (index: number) => {
     const newTexts = typewriterTexts.filter((_, i) => i !== index)
-    setTypewriterTexts(newTexts)
+    const result = await setTypewriterTexts(newTexts)
+    if (!result.success) {
+      toast?.error(result.error || '删除失败，请先登录管理员')
+    }
   }
 
   // 开始编辑
@@ -130,14 +179,18 @@ export default function SettingsPage() {
   }
 
   // 保存编辑
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (editingIndex === null || !editText.trim()) return
     const newTexts = [...typewriterTexts]
     newTexts[editingIndex] = editText.trim()
-    setTypewriterTexts(newTexts)
-    setEditingIndex(null)
-    setEditText('')
-    toast?.success('已更新')
+    const result = await setTypewriterTexts(newTexts)
+    if (result.success) {
+      setEditingIndex(null)
+      setEditText('')
+      toast?.success('已更新')
+    } else {
+      toast?.error(result.error || '更新失败，请先登录管理员')
+    }
   }
 
   // 取消编辑
@@ -289,7 +342,14 @@ export default function SettingsPage() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={resetTypewriterTexts}
+                    onClick={async () => {
+                      const result = await resetTypewriterTexts()
+                      if (result.success) {
+                        toast?.success('已重置为默认')
+                      } else {
+                        toast?.error(result.error || '重置失败，请先登录管理员')
+                      }
+                    }}
                     className="text-xs text-foreground-secondary hover:text-accent flex items-center gap-1"
                   >
                     <RotateCcw size={12} />
@@ -389,7 +449,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={heroSubtitle}
-                  onChange={(e) => setHeroSubtitle(e.target.value)}
+                  onChange={(e) => handleHeroSubtitleChange(e.target.value)}
                   placeholder="输入英雄页副标题..."
                   className="w-full input text-sm"
                 />
@@ -406,7 +466,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
+                  onChange={(e) => handleSiteNameChange(e.target.value)}
                   placeholder="输入网站名称..."
                   className="w-full input text-sm"
                 />
@@ -436,7 +496,12 @@ export default function SettingsPage() {
                       key={option.value}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setTheme(option.value)}
+                      onClick={async () => {
+                        const result = await setTheme(option.value)
+                        if (!result.success) {
+                          toast?.error(result.error || '切换失败，请先登录管理员')
+                        }
+                      }}
                       className={clsx(
                         'flex flex-col items-center gap-2 p-4 rounded-xl border transition-all',
                         isActive

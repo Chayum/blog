@@ -158,9 +158,9 @@ export default function Navbar() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95, rotate: 180 }}
                 transition={{ duration: 0.3 }}
-                onClick={() => {
+                onClick={async () => {
                   const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
-                  setTheme(nextTheme)
+                  await setTheme(nextTheme)
                 }}
                 className={clsx(
                   'p-2 rounded-lg transition-colors',

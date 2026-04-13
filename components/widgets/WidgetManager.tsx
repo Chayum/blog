@@ -24,8 +24,11 @@ export default function WidgetManager() {
   const leftWidget = useSettingsStore((state) => state.leftWidget)
   const setLeftWidget = useSettingsStore((state) => state.setLeftWidget)
 
-  const handleLeftTypeChange = (type: WidgetType) => {
-    setLeftWidget({ type })
+  const handleLeftTypeChange = async (type: WidgetType) => {
+    const result = await setLeftWidget({ type })
+    if (!result.success) {
+      console.error('组件切换失败:', result.error)
+    }
   }
 
   const LeftComponent = WIDGET_COMPONENTS[leftWidget.type]

@@ -34,18 +34,18 @@ interface SettingsState {
   heroSubtitle: string           // 英雄页副标题
   siteName: string               // 博客名称
   setHasHydrated: (state: boolean) => void
-  setTheme: (theme: Theme) => void
-  toggleTheme: () => void
-  setSidebarOpen: (open: boolean) => void
-  toggleSidebar: () => void
-  setHeroBackground: (background: string | null) => void
-  setTypewriterTexts: (texts: string[]) => void
-  resetTypewriterTexts: () => void
-  setLeftWidget: (widget: Partial<WidgetConfig>) => void
-  setRightWidget: (widget: Partial<WidgetConfig>) => void
-  resetWidgetPositions: () => void
-  setHeroSubtitle: (text: string) => void
-  setSiteName: (name: string) => void
+  setTheme: (theme: Theme) => Promise<{ success: boolean; error?: string }>
+  toggleTheme: () => Promise<{ success: boolean; error?: string }>
+  setSidebarOpen: (open: boolean) => Promise<{ success: boolean; error?: string }>
+  toggleSidebar: () => Promise<{ success: boolean; error?: string }>
+  setHeroBackground: (background: string | null) => Promise<{ success: boolean; error?: string }>
+  setTypewriterTexts: (texts: string[]) => Promise<{ success: boolean; error?: string }>
+  resetTypewriterTexts: () => Promise<{ success: boolean; error?: string }>
+  setLeftWidget: (widget: Partial<WidgetConfig>) => Promise<{ success: boolean; error?: string }>
+  setRightWidget: (widget: Partial<WidgetConfig>) => Promise<{ success: boolean; error?: string }>
+  resetWidgetPositions: () => Promise<{ success: boolean; error?: string }>
+  setHeroSubtitle: (text: string) => Promise<{ success: boolean; error?: string }>
+  setSiteName: (name: string) => Promise<{ success: boolean; error?: string }>
   syncFromApi: () => Promise<void>
 }
 
@@ -127,14 +127,21 @@ export const useSettingsStore = create<SettingsState>()(
         }
       },
 
-      setTheme: (theme) => {
+      setTheme: async (theme) => {
+        const oldTheme = get().theme
         set({ theme })
         applyTheme(theme)
-        // 同步到 API
-        settingsApi.update('theme', theme).catch(console.error)
+        try {
+          await settingsApi.update('theme', theme)
+          return { success: true }
+        } catch (error: any) {
+          set({ theme: oldTheme })
+          applyTheme(oldTheme)
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      toggleTheme: () => {
+      toggleTheme: async () => {
         const currentTheme = get().theme
         let newTheme: Theme
         
@@ -148,68 +155,142 @@ export const useSettingsStore = create<SettingsState>()(
         
         set({ theme: newTheme })
         applyTheme(newTheme)
-        settingsApi.update('theme', newTheme).catch(console.error)
+        try {
+          await settingsApi.update('theme', newTheme)
+          return { success: true }
+        } catch (error: any) {
+          set({ theme: currentTheme })
+          applyTheme(currentTheme)
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setSidebarOpen: (open) => {
+      setSidebarOpen: async (open) => {
+        const oldValue = get().sidebarOpen
         set({ sidebarOpen: open })
-        settingsApi.update('sidebarOpen', open).catch(console.error)
+        try {
+          await settingsApi.update('sidebarOpen', open)
+          return { success: true }
+        } catch (error: any) {
+          set({ sidebarOpen: oldValue })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      toggleSidebar: () => {
-        const newValue = !get().sidebarOpen
+      toggleSidebar: async () => {
+        const oldValue = get().sidebarOpen
+        const newValue = !oldValue
         set({ sidebarOpen: newValue })
-        settingsApi.update('sidebarOpen', newValue).catch(console.error)
+        try {
+          await settingsApi.update('sidebarOpen', newValue)
+          return { success: true }
+        } catch (error: any) {
+          set({ sidebarOpen: oldValue })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setHeroBackground: (background) => {
+      setHeroBackground: async (background) => {
+        const oldBackground = get().heroBackground
         set({ heroBackground: background })
-        settingsApi.update('heroBackground', background).catch(console.error)
+        try {
+          await settingsApi.update('heroBackground', background)
+          return { success: true }
+        } catch (error: any) {
+          set({ heroBackground: oldBackground })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setTypewriterTexts: (texts) => {
+      setTypewriterTexts: async (texts) => {
+        const oldTexts = get().typewriterTexts
         set({ typewriterTexts: texts })
-        settingsApi.update('typewriterTexts', JSON.stringify(texts)).catch(console.error)
+        try {
+          await settingsApi.update('typewriterTexts', JSON.stringify(texts))
+          return { success: true }
+        } catch (error: any) {
+          set({ typewriterTexts: oldTexts })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      resetTypewriterTexts: () => {
+      resetTypewriterTexts: async () => {
+        const oldTexts = get().typewriterTexts
         set({ typewriterTexts: DEFAULT_TYPEWRITER_TEXTS })
-        settingsApi.update('typewriterTexts', JSON.stringify(DEFAULT_TYPEWRITER_TEXTS)).catch(console.error)
+        try {
+          await settingsApi.update('typewriterTexts', JSON.stringify(DEFAULT_TYPEWRITER_TEXTS))
+          return { success: true }
+        } catch (error: any) {
+          set({ typewriterTexts: oldTexts })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setLeftWidget: (widget) => {
-        set((state) => {
-          const newWidget = { ...state.leftWidget, ...widget }
-          settingsApi.update('leftWidget', JSON.stringify(newWidget)).catch(console.error)
-          return { leftWidget: newWidget }
-        })
+      setLeftWidget: async (widget) => {
+        const oldWidget = get().leftWidget
+        const newWidget = { ...oldWidget, ...widget }
+        set({ leftWidget: newWidget })
+        try {
+          await settingsApi.update('leftWidget', JSON.stringify(newWidget))
+          return { success: true }
+        } catch (error: any) {
+          set({ leftWidget: oldWidget })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setRightWidget: (widget) => {
-        set((state) => {
-          const newWidget = { ...state.rightWidget, ...widget }
-          settingsApi.update('rightWidget', JSON.stringify(newWidget)).catch(console.error)
-          return { rightWidget: newWidget }
-        })
+      setRightWidget: async (widget) => {
+        const oldWidget = get().rightWidget
+        const newWidget = { ...oldWidget, ...widget }
+        set({ rightWidget: newWidget })
+        try {
+          await settingsApi.update('rightWidget', JSON.stringify(newWidget))
+          return { success: true }
+        } catch (error: any) {
+          set({ rightWidget: oldWidget })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      resetWidgetPositions: () => {
+      resetWidgetPositions: async () => {
+        const oldLeftWidget = get().leftWidget
+        const oldRightWidget = get().rightWidget
         set({
           leftWidget: DEFAULT_LEFT_WIDGET,
           rightWidget: DEFAULT_RIGHT_WIDGET
         })
-        settingsApi.update('leftWidget', JSON.stringify(DEFAULT_LEFT_WIDGET)).catch(console.error)
-        settingsApi.update('rightWidget', JSON.stringify(DEFAULT_RIGHT_WIDGET)).catch(console.error)
+        try {
+          await settingsApi.update('leftWidget', JSON.stringify(DEFAULT_LEFT_WIDGET))
+          await settingsApi.update('rightWidget', JSON.stringify(DEFAULT_RIGHT_WIDGET))
+          return { success: true }
+        } catch (error: any) {
+          set({ leftWidget: oldLeftWidget, rightWidget: oldRightWidget })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setHeroSubtitle: (text) => {
+      setHeroSubtitle: async (text) => {
+        const oldSubtitle = get().heroSubtitle
         set({ heroSubtitle: text })
-        settingsApi.update('heroSubtitle', text).catch(console.error)
+        try {
+          await settingsApi.update('heroSubtitle', text)
+          return { success: true }
+        } catch (error: any) {
+          set({ heroSubtitle: oldSubtitle })
+          return { success: false, error: error.message || '同步失败' }
+        }
       },
 
-      setSiteName: (name) => {
+      setSiteName: async (name) => {
+        const oldName = get().siteName
         set({ siteName: name })
-        settingsApi.update('siteName', name).catch(console.error)
+        try {
+          await settingsApi.update('siteName', name)
+          return { success: true }
+        } catch (error: any) {
+          set({ siteName: oldName })
+          return { success: false, error: error.message || '同步失败' }
+        }
       }
     }),
     {
