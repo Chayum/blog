@@ -80,7 +80,7 @@ export default function Navbar() {
           isHome
             ? 'bg-transparent'
             : scrolled
-              ? 'glass border-b border-border/50 shadow-sm backdrop-blur-xl bg-background/80'
+              ? 'glass shadow-sm backdrop-blur-xl bg-background/80'
               : 'bg-transparent'
         )}
       >
