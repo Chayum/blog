@@ -329,14 +329,14 @@ export default function NoteDetailPage() {
                     <div className="relative group my-6">
                       {/* 左上角：语言标识 */}
                       {match && (
-                        <div className="absolute left-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        <div className="absolute left-2 -top-8 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                           <span className="text-xs text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
                             {match[1]}
                           </span>
                         </div>
                       )}
                       {/* 右上角：复制按钮 */}
-                      <div className="absolute right-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <div className="absolute right-2 -top-8 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(code)
