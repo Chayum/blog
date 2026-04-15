@@ -278,6 +278,11 @@ async function handleSettings(request: Request, env: Env): Promise<Response> {
         settings[r.key] = r.value;
       }
     }
+    // 从 KV 获取 heroBackground（可能很大，存 KV 不存 D1）
+    const heroBackground = await env.KV.get('heroBackground');
+    if (heroBackground) {
+      settings.heroBackground = heroBackground;
+    }
     return jsonResponse(settings);
   }
   
@@ -294,8 +299,14 @@ async function handleSettings(request: Request, env: Env): Promise<Response> {
       return errorResponse('Value is required');
     }
     
-    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+    // heroBackground 存 KV（可能很大），不受 D1 1MB 限制
+    if (key === 'heroBackground') {
+      await env.KV.put('heroBackground', value);
+      return jsonResponse({ key, value });
+    }
     
+    // 其他设置存 D1
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
     await env.DB.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
