@@ -1,0 +1,12 @@
+name = "blogpro-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "blogpro-db"
+database_id = "d5069fdb-d958-46d1-b9ec-347c49b27607"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "a328ac8d2f1f4abfbd0cbe4d6934cafd"

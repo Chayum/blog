@@ -590,33 +590,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </FadeIn>
-
-        {/* 关于 */}
-        <FadeIn delay={0.3}>
-          <div className="card">
-            <h2 className="text-lg font-semibold mb-4">关于</h2>
-            
-            <div className="flex items-center gap-4 p-4 rounded-xl bg-background-secondary">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white text-xl font-bold">
-                B
-              </div>
-              <div>
-                <div className="font-bold text-lg">BlogPro</div>
-                <div className="text-sm text-foreground-secondary">
-                  版本 1.0.0
-                </div>
-                <div className="text-xs text-foreground-secondary mt-1">
-                  一个简洁、优雅的个人笔记博客系统
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 text-sm text-foreground-secondary">
-              <p>使用 Next.js + Tailwind CSS + Zustand 构建</p>
-              <p className="mt-1">数据存储在浏览器本地 · 不会上传到任何服务器</p>
-            </div>
-          </div>
-        </FadeIn>
       </div>
 
       {/* 底部留白 */}

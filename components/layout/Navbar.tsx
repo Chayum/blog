@@ -4,13 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
-import { Menu, X, Sun, Moon, Monitor, PenLine, BookOpen, Globe, Settings, Lock } from 'lucide-react'
+import { Menu, X, Sun, Moon, Monitor, PenLine, BookOpen, Globe, Settings, Lock, Home } from 'lucide-react'
 import { useSettingsStore } from '@/store/settingsStore'
 import AdminSettings from '@/components/ui/AdminSettings'
 import clsx from 'clsx'
 
 const navItems = [
-  { href: '/', label: '首页', icon: BookOpen },
+  { href: '/', label: '首页', icon: Home },
   { href: '/notes', label: '笔记', icon: BookOpen },
   { href: '/write', label: '写笔记', icon: PenLine },
   { href: '/sites', label: '导航', icon: Globe },
@@ -76,10 +76,12 @@ export default function Navbar() {
       <header
         className={clsx(
           'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
-          // 首页未滚动时透明，其他页面或滚动后显示背景
-          scrolled || !isHome
-            ? 'glass border-b border-border/50 shadow-sm backdrop-blur-xl bg-background/80'
-            : 'bg-transparent'
+          // 首页时强制透明无边框，其他页面根据滚动状态显示
+          isHome
+            ? 'bg-transparent'
+            : scrolled
+              ? 'glass border-b border-border/50 shadow-sm backdrop-blur-xl bg-background/80'
+              : 'bg-transparent'
         )}
       >
         <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
