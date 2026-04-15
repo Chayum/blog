@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import rehypeShiki from '@shikijs/rehype'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { ArrowLeft, Edit, Calendar, Clock, Share2, Check, Download, Trash2, ArrowUp } from 'lucide-react'
 import { useNotesStore } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
@@ -307,14 +308,12 @@ export default function NoteDetailPage() {
           <article className="markdown-content text-lg leading-relaxed">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[
-                rehypeRaw,
-                [rehypeShiki, { theme: 'github-dark' }]
-              ]}
+              rehypePlugins={[rehypeRaw]}
               components={{
                 code: ({ className, children, ...props }) => {
                   const match = /language-(\w+)/.exec(className || '')
                   const isInline = !match
+                  const code = String(children)
 
                   if (isInline) {
                     return (
@@ -324,21 +323,23 @@ export default function NoteDetailPage() {
                     )
                   }
 
+                  const language = match ? match[1] : 'text'
+
                   return (
                     <div className="relative group my-6">
                       {/* 左上角：语言标识 */}
                       {match && (
-                        <div className="absolute left-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <div className="absolute left-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                           <span className="text-xs text-white/70 bg-white/10 px-2 py-1 rounded">
                             {match[1]}
                           </span>
                         </div>
                       )}
                       {/* 右上角：复制按钮 */}
-                      <div className="absolute right-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute right-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(String(children))
+                            navigator.clipboard.writeText(code)
                             toast.success('代码已复制')
                           }}
                           className="text-xs py-1 px-2 bg-white/10 hover:bg-white/20 text-white/70 rounded transition-colors"
@@ -346,11 +347,25 @@ export default function NoteDetailPage() {
                           复制
                         </button>
                       </div>
-                      <pre className="!bg-[#0d1117] rounded-lg overflow-x-auto">
-                        <code className={`${className}`} {...props}>
-                          {children}
-                        </code>
-                      </pre>
+                      <SyntaxHighlighter
+                        style={oneDark}
+                        language={language}
+                        PreTag="div"
+                        customStyle={{
+                          margin: 0,
+                          borderRadius: '0.5rem',
+                          background: '#0d1117'
+                        }}
+                        codeTagProps={{
+                          style: {
+                            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                            fontSize: '0.875rem',
+                            lineHeight: '1.7'
+                          }
+                        }}
+                      >
+                        {code}
+                      </SyntaxHighlighter>
                     </div>
                   )
                 },
