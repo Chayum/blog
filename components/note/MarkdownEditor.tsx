@@ -7,7 +7,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import {
   Bold, Italic, Heading1, Heading2, Heading3, Link2, Image,
-  List, ListOrdered, Quote, Code, Eye, Edit3, Save, EyeOff
+  List, ListOrdered, Quote, Code, Eye, Edit3, Save, EyeOff, ChevronDown
 } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import clsx from 'clsx'
@@ -38,6 +38,24 @@ export default function MarkdownEditor({
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [isPreview, setIsPreview] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [codeLangMenuOpen, setCodeLangMenuOpen] = useState(false)
+  
+  // 代码块语言列表
+  const languages = [
+    { value: '', label: '无（纯文本）' },
+    { value: 'javascript', label: 'JavaScript' },
+    { value: 'typescript', label: 'TypeScript' },
+    { value: 'python', label: 'Python' },
+    { value: 'java', label: 'Java' },
+    { value: 'cpp', label: 'C++' },
+    { value: 'go', label: 'Go' },
+    { value: 'rust', label: 'Rust' },
+    { value: 'html', label: 'HTML' },
+    { value: 'css', label: 'CSS' },
+    { value: 'sql', label: 'SQL' },
+    { value: 'json', label: 'JSON' },
+    { value: 'bash', label: 'Bash' },
+  ]
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const toast = useToast()
@@ -85,7 +103,7 @@ export default function MarkdownEditor({
     { icon: Bold, action: () => insertText('**', '**', '粗体'), title: '粗体' },
     { icon: Italic, action: () => insertText('*', '*', '斜体'), title: '斜体' },
     { type: 'divider' as const },
-    { icon: Code, action: () => insertText('\n```\n', '\n```\n', '代码'), title: '代码块' },
+    // 代码块按钮改为带下拉菜单
     { icon: Link2, action: () => insertText('[', '](url)', '链接'), title: '链接' },
     { icon: Image, action: () => insertText('![', '](url)', '图片'), title: '图片' },
     { type: 'divider' as const },
@@ -186,6 +204,46 @@ export default function MarkdownEditor({
                   </motion.button>
                 )
               })}
+              
+              {/* 代码块按钮 - 带下拉菜单 */}
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setCodeLangMenuOpen(!codeLangMenuOpen)}
+                  title="代码块"
+                  className="p-2 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-background-secondary transition-colors flex items-center gap-1"
+                >
+                  <Code size={16} />
+                  <ChevronDown size={12} />
+                </motion.button>
+                
+                {/* 下拉菜单 */}
+                {codeLangMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setCodeLangMenuOpen(false)} 
+                    />
+                    <div className="absolute top-full left-0 mt-1 w-40 max-h-60 overflow-y-auto bg-card border border-border rounded-lg shadow-lg z-50">
+                      {languages.map((lang) => (
+                        <button
+                          key={lang.value}
+                          onClick={() => {
+                            const langMark = lang.value ? `\n\`\`\`${lang.value}\n` : '\n```\n'
+                            const endMark = '\n```\n'
+                            insertText(langMark, endMark, '代码')
+                            setCodeLangMenuOpen(false)
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-background-secondary transition-colors"
+                        >
+                          {lang.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
