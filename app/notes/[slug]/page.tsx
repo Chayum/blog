@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import rehypeShiki from '@shikijs/rehype'
 import { ArrowLeft, Edit, Calendar, Clock, Share2, Check, Download, Trash2, ArrowUp } from 'lucide-react'
 import { useNotesStore } from '@/store/notesStore'
 import { useToast } from '@/components/ui/Toast'
@@ -306,7 +307,10 @@ export default function NoteDetailPage() {
           <article className="markdown-content text-lg leading-relaxed">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw]}
+              rehypePlugins={[
+                rehypeRaw,
+                [rehypeShiki, { theme: 'github-dark' }]
+              ]}
               components={{
                 code: ({ className, children, ...props }) => {
                   const match = /language-(\w+)/.exec(className || '')
@@ -325,7 +329,7 @@ export default function NoteDetailPage() {
                       {/* 左上角：语言标识 */}
                       {match && (
                         <div className="absolute left-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                          <span className="text-xs text-foreground-secondary bg-background-secondary px-2 py-1 rounded">
+                          <span className="text-xs text-white/70 bg-white/10 px-2 py-1 rounded">
                             {match[1]}
                           </span>
                         </div>
@@ -337,13 +341,13 @@ export default function NoteDetailPage() {
                             navigator.clipboard.writeText(String(children))
                             toast.success('代码已复制')
                           }}
-                          className="btn btn-ghost text-xs py-1 px-2 bg-background-secondary"
+                          className="text-xs py-1 px-2 bg-white/10 hover:bg-white/20 text-white/70 rounded transition-colors"
                         >
                           复制
                         </button>
                       </div>
-                      <pre className="bg-background-secondary rounded-lg p-4 overflow-x-auto">
-                        <code className={`${className} font-mono text-base`} {...props}>
+                      <pre className="!bg-[#0d1117] rounded-lg overflow-x-auto">
+                        <code className={`${className}`} {...props}>
                           {children}
                         </code>
                       </pre>
