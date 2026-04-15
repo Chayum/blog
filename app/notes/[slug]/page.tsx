@@ -330,7 +330,7 @@ export default function NoteDetailPage() {
                       {/* 左上角：语言标识 */}
                       {match && (
                         <div className="absolute left-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                          <span className="text-xs text-white/70 bg-white/10 px-2 py-1 rounded">
+                          <span className="text-xs text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
                             {match[1]}
                           </span>
                         </div>
@@ -342,7 +342,7 @@ export default function NoteDetailPage() {
                             navigator.clipboard.writeText(code)
                             toast.success('代码已复制')
                           }}
-                          className="text-xs py-1 px-2 bg-white/10 hover:bg-white/20 text-white/70 rounded transition-colors"
+                          className="text-xs py-1 px-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded transition-colors"
                         >
                           复制
                         </button>
