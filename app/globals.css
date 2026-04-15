@@ -173,40 +173,39 @@
     animation: shimmer 1.5s infinite linear;
   }
 
-  /* Shiki 代码块样式覆盖 */
-  .shiki {
-    background-color: #0d1117 !important;
+  /* 代码块样式覆盖 - react-syntax-highlighter */
+  .markdown-content pre[class*="language-"] {
+    margin: 0;
     padding: 1rem;
+    background: #0d1117 !important;
     border-radius: 0.5rem;
     overflow-x: auto;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-    font-size: 0.875rem;
-    line-height: 1.7;
   }
 
-  .shiki code {
-    font-family: inherit;
+  .markdown-content code[class*="language-"],
+  .markdown-content pre[class*="language-"] code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+    font-size: 0.875rem !important;
+    line-height: 1.7 !important;
     background: transparent !important;
-    padding: 0;
-    margin: 0;
   }
 
   /* 代码块滚动条 */
-  .shiki::-webkit-scrollbar {
+  .markdown-content pre::-webkit-scrollbar {
     height: 8px;
   }
 
-  .shiki::-webkit-scrollbar-track {
+  .markdown-content pre::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 4px;
   }
 
-  .shiki::-webkit-scrollbar-thumb {
+  .markdown-content pre::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
   }
 
-  .shiki::-webkit-scrollbar-thumb:hover {
+  .markdown-content pre::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
   }
 

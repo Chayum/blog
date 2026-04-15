@@ -354,11 +354,13 @@ export default function NoteDetailPage() {
                         customStyle={{
                           margin: 0,
                           borderRadius: '0.5rem',
-                          background: '#0d1117'
+                          background: '#0d1117',
+                          border: 'none',
+                          position: 'relative'
                         }}
                         codeTagProps={{
                           style: {
-                            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                            fontFamily: "'JetBrains Mono', 'Fira Code', monospace !important",
                             fontSize: '0.875rem',
                             lineHeight: '1.7'
                           }
