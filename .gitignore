@@ -48,3 +48,7 @@ next-env.d.ts
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Cloudflare Worker
+cloudflare-worker/node_modules/
+cloudflare-worker/.wrangler/

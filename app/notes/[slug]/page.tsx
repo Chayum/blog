@@ -322,7 +322,16 @@ export default function NoteDetailPage() {
 
                   return (
                     <div className="relative group my-6">
-                      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* 左上角：语言标识 */}
+                      {match && (
+                        <div className="absolute left-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          <span className="text-xs text-foreground-secondary bg-background-secondary px-2 py-1 rounded">
+                            {match[1]}
+                          </span>
+                        </div>
+                      )}
+                      {/* 右上角：复制按钮 */}
+                      <div className="absolute right-2 -top-6 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(String(children))
