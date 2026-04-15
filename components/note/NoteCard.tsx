@@ -1,6 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { useRef, useState } from 'react'
 import { Pin, Check } from 'lucide-react'
 import Link from 'next/link'
 import { Note } from '@/store/notesStore'
@@ -25,6 +26,34 @@ export default function NoteCard({
   isSelected = false,
   onToggleSelect
 }: NoteCardProps) {
+  // 3D 倾斜效果
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [isHovered, setIsHovered] = useState(false)
+  
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  
+  const springConfig = { stiffness: 300, damping: 30 }
+  const rotateX = useSpring(y, springConfig)
+  const rotateY = useSpring(x, springConfig)
+  
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current || isBatchMode) return
+    const rect = cardRef.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const mouseX = e.clientX - centerX
+    const mouseY = e.clientY - centerY
+    x.set(mouseX / 10)
+    y.set(-mouseY / 10)
+  }
+  
+  const handleMouseLeave = () => {
+    setIsHovered(false)
+    x.set(0)
+    y.set(0)
+  }
+
   // 提取摘要
   const getExcerpt = (content: string): string => {
     // 移除markdown语法
@@ -60,10 +89,19 @@ export default function NoteCard({
 
   return (
     <motion.div
-      whileHover={isBatchMode ? {} : { y: -4 }}
+      ref={cardRef}
+      style={{
+        rotateX: isHovered ? rotateX : 0,
+        rotateY: isHovered ? rotateY : 0,
+        transformStyle: "preserve-3d"
+      }}
+      animate={isBatchMode ? {} : { y: isHovered ? -8 : 0 }}
       transition={{ duration: 0.2 }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
       className={clsx(
-        "card group relative",
+        "card group relative cursor-pointer",
         !isBatchMode && "card-hover",
         isSelected && "ring-2 ring-accent ring-offset-2"
       )}

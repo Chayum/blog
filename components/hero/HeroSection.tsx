@@ -68,7 +68,7 @@ export default function HeroSection() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gradient tracking-tight">
             <span className="inline-block min-h-[1.2em]">
               {displayText}
             </span>
