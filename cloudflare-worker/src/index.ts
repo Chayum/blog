@@ -318,6 +318,255 @@ async function handleSettings(request: Request, env: Env): Promise<Response> {
   return errorResponse('Not found', 404);
 }
 
+// 复盘相关 API
+async function handleReviews(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  
+  // GET /api/reviews/stats - 获取统计信息
+  if (request.method === 'GET' && pathParts.length === 3 && pathParts[2] === 'stats') {
+    const { results: allReviews } = await env.DB.prepare(
+      'SELECT date FROM reviews ORDER BY date DESC'
+    ).all();
+    
+    const reviews = allReviews as any[];
+    const totalReviews = reviews.length;
+    
+    // 计算连续天数
+    let streakDays = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < reviews.length; i++) {
+      const reviewDate = new Date(reviews[i].date);
+      reviewDate.setHours(0, 0, 0, 0);
+      const expectedDate = new Date(today);
+      expectedDate.setDate(expectedDate.getDate() - i);
+      
+      if (reviewDate.getTime() === expectedDate.getTime()) {
+        streakDays++;
+      } else {
+        break;
+      }
+    }
+    
+    // 本月复盘数
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const { results: monthReviews } = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM reviews WHERE date >= ?'
+    ).bind(monthStart.toISOString().split('T')[0]).all();
+    const thisMonthReviews = (monthReviews[0] as any)?.count || 0;
+    
+    // 最后复盘日期
+    const lastReviewDate = reviews.length > 0 ? reviews[0].date : null;
+    
+    return jsonResponse({
+      streakDays,
+      totalReviews,
+      thisMonthReviews,
+      lastReviewDate
+    });
+  }
+  
+  // GET /api/reviews/:date - 获取指定日期的复盘
+  if (request.method === 'GET' && pathParts.length === 3 && pathParts[2] !== 'stats') {
+    const date = pathParts[2];
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM reviews WHERE date = ?'
+    ).bind(date).all();
+    
+    if (results.length === 0) {
+      return jsonResponse(null);
+    }
+    
+    return jsonResponse(results[0]);
+  }
+  
+  // GET /api/reviews - 获取所有复盘（分页）
+  if (request.method === 'GET' && pathParts.length === 2) {
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const offset = (page - 1) * limit;
+    
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM reviews ORDER BY date DESC LIMIT ? OFFSET ?'
+    ).bind(limit, offset).all();
+    
+    const { results: countResult } = await env.DB.prepare(
+      'SELECT COUNT(*) as total FROM reviews'
+    ).all();
+    const total = (countResult[0] as any)?.total || 0;
+    
+    return jsonResponse({
+      data: results,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  }
+  
+  // POST /api/reviews - 创建或更新复盘
+  if (request.method === 'POST' && pathParts.length === 2) {
+    if (!verifyAuth(request)) {
+      return errorResponse('Unauthorized', 401);
+    }
+    
+    const body = await request.json();
+    const { date, completed, insights, plans, freeText } = body;
+    
+    if (!date) {
+      return errorResponse('Date is required');
+    }
+    
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    
+    await env.DB.prepare(`
+      INSERT INTO reviews (id, date, completed, insights, plans, freeText, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(date) DO UPDATE SET
+        completed = excluded.completed,
+        insights = excluded.insights,
+        plans = excluded.plans,
+        freeText = excluded.freeText,
+        updatedAt = excluded.updatedAt
+    `).bind(id, date, completed || null, insights || null, plans || null, freeText || null, now, now).run();
+    
+    return jsonResponse({ id, date, completed, insights, plans, freeText, createdAt: now, updatedAt: now });
+  }
+  
+  // DELETE /api/reviews/:id - 删除复盘
+  if (request.method === 'DELETE' && pathParts.length === 3) {
+    if (!verifyAuth(request)) {
+      return errorResponse('Unauthorized', 401);
+    }
+    
+    const id = pathParts[2];
+    await env.DB.prepare('DELETE FROM reviews WHERE id = ?').bind(id).run();
+    
+    return jsonResponse({ success: true });
+  }
+  
+  return errorResponse('Not found', 404);
+}
+
+// 模板相关 API
+async function handleReviewTemplates(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  
+  // GET /api/review-templates - 获取所有模板
+  if (request.method === 'GET' && pathParts.length === 2) {
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM review_templates ORDER BY isDefault DESC, createdAt ASC'
+    ).all();
+    
+    return jsonResponse(results);
+  }
+  
+  // GET /api/review-templates/:id - 获取单个模板
+  if (request.method === 'GET' && pathParts.length === 3) {
+    const id = pathParts[2];
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM review_templates WHERE id = ?'
+    ).bind(id).all();
+    
+    if (results.length === 0) {
+      return errorResponse('Template not found', 404);
+    }
+    
+    return jsonResponse(results[0]);
+  }
+  
+  // POST /api/review-templates - 创建模板
+  if (request.method === 'POST' && pathParts.length === 2) {
+    if (!verifyAuth(request)) {
+      return errorResponse('Unauthorized', 401);
+    }
+    
+    const body = await request.json();
+    const { name, fields } = body;
+    
+    if (!name || !fields) {
+      return errorResponse('Name and fields are required');
+    }
+    
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    
+    await env.DB.prepare(
+      'INSERT INTO review_templates (id, name, fields, isDefault, createdAt) VALUES (?, ?, ?, 0, ?)'
+    ).bind(id, name, JSON.stringify(fields), now).run();
+    
+    return jsonResponse({ id, name, fields, isDefault: 0, createdAt: now });
+  }
+  
+  // PUT /api/review-templates/:id - 更新模板
+  if (request.method === 'PUT' && pathParts.length === 3) {
+    if (!verifyAuth(request)) {
+      return errorResponse('Unauthorized', 401);
+    }
+    
+    const id = pathParts[2];
+    const body = await request.json();
+    const { name, fields } = body;
+    
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (name) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (fields) {
+      updates.push('fields = ?');
+      values.push(JSON.stringify(fields));
+    }
+    
+    if (updates.length === 0) {
+      return errorResponse('No fields to update');
+    }
+    
+    values.push(id);
+    await env.DB.prepare(
+      `UPDATE review_templates SET ${updates.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+    
+    return jsonResponse({ id, name, fields });
+  }
+  
+  // DELETE /api/review-templates/:id - 删除模板
+  if (request.method === 'DELETE' && pathParts.length === 3) {
+    if (!verifyAuth(request)) {
+      return errorResponse('Unauthorized', 401);
+    }
+    
+    const id = pathParts[2];
+    
+    // 不允许删除默认模板
+    const { results } = await env.DB.prepare(
+      'SELECT isDefault FROM review_templates WHERE id = ?'
+    ).bind(id).all();
+    
+    if (results.length === 0) {
+      return errorResponse('Template not found', 404);
+    }
+    
+    if ((results[0] as any).isDefault === 1) {
+      return errorResponse('Cannot delete default template', 400);
+    }
+    
+    await env.DB.prepare('DELETE FROM review_templates WHERE id = ?').bind(id).run();
+    
+    return jsonResponse({ success: true });
+  }
+  
+  return errorResponse('Not found', 404);
+}
+
 // 验证 KV 中存储的密码
 async function verifyPassword(request: Request, env: Env): Promise<boolean> {
   const password = await env.KV.get('admin_password');
@@ -355,6 +604,12 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
   if (path.startsWith('/api/settings')) {
     return handleSettings(request, env);
+  }
+  if (path.startsWith('/api/reviews')) {
+    return handleReviews(request, env);
+  }
+  if (path.startsWith('/api/review-templates')) {
+    return handleReviewTemplates(request, env);
   }
   
   // 健康检查

@@ -271,3 +271,104 @@ export async function testAdminPassword(password: string): Promise<boolean> {
     return false
   }
 }
+
+// ============ 复盘相关 ============
+
+export interface ReviewItem {
+  id: string
+  date: string
+  completed: string | null
+  insights: string | null
+  plans: string | null
+  freeText: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ReviewStats {
+  streakDays: number
+  totalReviews: number
+  thisMonthReviews: number
+  lastReviewDate: string | null
+}
+
+export interface ReviewPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export const reviewsApi = {
+  // 获取所有复盘（分页）
+  getAll: (page = 1, limit = 10) => 
+    apiRequest<{ data: ReviewItem[]; pagination: ReviewPagination }>(`/api/reviews?page=${page}&limit=${limit}`),
+  
+  // 获取指定日期的复盘
+  getByDate: (date: string) => 
+    apiRequest<ReviewItem | null>(`/api/reviews/${date}`),
+  
+  // 获取统计信息
+  getStats: () => 
+    apiRequest<ReviewStats>('/api/reviews/stats'),
+  
+  // 创建或更新复盘
+  upsert: (data: {
+    date: string
+    completed?: string
+    insights?: string
+    plans?: string
+    freeText?: string
+  }) => apiRequest<ReviewItem>('/api/reviews', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  // 删除复盘
+  delete: (id: string) => 
+    apiRequest<{ success: boolean }>(`/api/reviews/${id}`, { method: 'DELETE' }),
+}
+
+// ============ 模板相关 ============
+
+export interface ReviewTemplateField {
+  id: string
+  label: string
+  icon: string
+  type: 'checkbox' | 'textarea'
+  required: boolean
+}
+
+export interface ReviewTemplate {
+  id: string
+  name: string
+  fields: ReviewTemplateField[]
+  isDefault: number
+  createdAt: string
+}
+
+export const reviewTemplatesApi = {
+  // 获取所有模板
+  getAll: () => apiRequest<ReviewTemplate[]>('/api/review-templates'),
+  
+  // 获取单个模板
+  getById: (id: string) => apiRequest<ReviewTemplate>(`/api/review-templates/${id}`),
+  
+  // 创建模板
+  create: (data: { name: string; fields: ReviewTemplateField[] }) => 
+    apiRequest<ReviewTemplate>('/api/review-templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  // 更新模板
+  update: (id: string, data: { name?: string; fields?: ReviewTemplateField[] }) => 
+    apiRequest<ReviewTemplate>(`/api/review-templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  // 删除模板
+  delete: (id: string) => 
+    apiRequest<{ success: boolean }>(`/api/review-templates/${id}`, { method: 'DELETE' }),
+}

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
-import { Menu, X, Sun, Moon, Monitor, PenLine, BookOpen, Globe, Settings, Lock, Home } from 'lucide-react'
+import { Menu, X, Sun, Moon, Monitor, PenLine, BookOpen, Globe, Settings, Lock, Home, RotateCcw } from 'lucide-react'
 import { useSettingsStore } from '@/store/settingsStore'
 import AdminSettings from '@/components/ui/AdminSettings'
 import clsx from 'clsx'
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/', label: '首页', icon: Home },
   { href: '/notes', label: '笔记', icon: BookOpen },
   { href: '/write', label: '写笔记', icon: PenLine },
+  { href: '/review', label: '复盘', icon: RotateCcw },
   { href: '/sites', label: '导航', icon: Globe },
   { href: '/settings', label: '设置', icon: Settings },
 ]
